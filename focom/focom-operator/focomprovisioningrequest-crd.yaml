@@ -1,0 +1,92 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: focomprovisioningrequests.focom.nephio.org
+spec:
+  group: focom.nephio.org
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                # Target O-Cloud
+                oCloudNamespace:
+                  type: string
+                  description: "Namespace for the ProvisioningRequest"
+                  default: "default"
+                
+                # Operation type
+                operation:
+                  type: string
+                  description: "Operation: create or scale"
+                  enum: ["create", "scale", "delete"]
+                  default: "create"
+                
+                # === Cluster Selection (pick one) ===
+                
+                # Option 1: All clusters from input.json
+                allClusters:
+                  type: boolean
+                  description: "Create all clusters from input.json"
+                  default: false
+                
+                # Option 2: Selected clusters
+                clusterNames:
+                  type: array
+                  description: "Array of cluster names from input.json"
+                  items:
+                    type: string
+                
+                # Option 3: Single cluster
+                clusterName:
+                  type: string
+                  description: "Single cluster name from input.json"
+                
+                # Scaling
+                targetWorkerCount:
+                  type: integer
+                  description: "Target worker count for scale operation"
+            
+            status:
+              type: object
+              properties:
+                phase:
+                  type: string
+                  enum: ["Pending", "Loading", "Validating", "Creating", "Scaling", "Synced", "Failed"]
+                message:
+                  type: string
+                lastUpdated:
+                  type: string
+                remoteName:
+                  type: string
+                  description: "Name of created ProvisioningRequest"
+                currentWorkerCount:
+                  type: integer
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+        - name: Operation
+          type: string
+          jsonPath: .spec.operation
+        - name: Remote
+          type: string
+          jsonPath: .status.remoteName
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
+  scope: Namespaced
+  names:
+    plural: focomprovisioningrequests
+    singular: focomprovisioningrequest
+    kind: FocomProvisioningRequest
+    shortNames:
+      - fpr

@@ -1,0 +1,20 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metricfunc
+  labels:
+    release: sdcore5g
+    app: metricfunc
+spec:
+  type: ClusterIP
+  selector:
+    release: sdcore5g
+    app: metricfunc
+  ports:
+  - name: prometheus-exporter
+    port: 9089
+    protocol: TCP
+  - name: api-endpoint
+    port: 9301
+    protocol: TCP

@@ -1,0 +1,238 @@
+{% for cluster in input.clusters %}
+{% set cluster_name = cluster.cluster_name | lower %}
+{% set first_master_id = cluster.cluster_masters[0].host_id %}
+
+{# --- DYNAMIC IP LOOKUP LOGIC --- #}
+{% set ns = namespace(endpoint_ip='') %}
+{% for h in input.hosts %}
+  {% if h.host_id == first_master_id %}
+    {% set ns.endpoint_ip = h.host_ip %}
+  {% endif %}
+{% endfor %}
+{# ------------------------------- #}
+
+---
+# 1. Base KubeadmConfigTemplate
+apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+kind: KubeadmConfigTemplate
+metadata:
+  name: {{ cluster_name }}-md-base
+  namespace: default
+spec:
+  template:
+    spec: {}
+---
+# 2. Cluster Object
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  labels:
+    cni: {{ cluster_name }}-crs-0
+    crs: "true"
+  name: {{ cluster_name }}
+  namespace: default
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks: ["{{ cluster.pod_cidr | default('10.244.0.0/16') }}"]
+    serviceDomain: cluster.local
+    services:
+      cidrBlocks: ["{{ cluster.service_cidr | default('10.96.0.0/12') }}"]
+  controlPlaneRef:
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+    kind: KubeadmControlPlane
+    name: {{ cluster_name }}-control-plane
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+    kind: ByoCluster
+    name: {{ cluster_name }}
+---
+# 3. Infrastructure Cluster
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: ByoCluster
+metadata:
+  name: {{ cluster_name }}
+  namespace: default
+spec:
+  bundleLookupBaseRegistry: projects.registry.vmware.com/cluster_api_provider_bringyourownhost
+  controlPlaneEndpoint:
+    host: {{ ns.endpoint_ip }}
+    port: 6443
+---
+# 4. Control Plane
+apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+kind: KubeadmControlPlane
+metadata:
+  name: {{ cluster_name }}-control-plane
+  namespace: default
+spec:
+  replicas: {{ cluster.cluster_masters | length }}
+  version: {{ cluster_k8s_version }}  # <--- DYNAMIC VERSION
+  machineTemplate:
+    infrastructureRef:
+      apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+      kind: ByoMachineTemplate
+      name: {{ cluster_name }}-cp-template
+      namespace: default
+  kubeadmConfigSpec:
+    clusterConfiguration:
+      apiServer:
+        certSANs: [localhost, 127.0.0.1, 0.0.0.0, host.docker.internal, {{ ns.endpoint_ip }}]
+      controllerManager:
+        extraArgs: {enable-hostpath-provisioner: "true"}
+    initConfiguration:
+      nodeRegistration:
+        criSocket: /var/run/containerd/containerd.sock
+        ignorePreflightErrors: [Swap, DirAvailable--etc-kubernetes-manifests, FileAvailable--etc-kubernetes-kubelet.conf]
+    joinConfiguration:
+      nodeRegistration:
+        criSocket: /var/run/containerd/containerd.sock
+        ignorePreflightErrors: [Swap, DirAvailable--etc-kubernetes-manifests, FileAvailable--etc-kubernetes-kubelet.conf]
+    postKubeadmCommands:
+      - curl -L https://raw.githubusercontent.com/projectcalico/calico/v3.27.2/manifests/calico.yaml -o /root/calico.yaml
+      - kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f /root/calico.yaml || true
+    files:
+    - content: |
+        apiVersion: v1
+        kind: Pod
+        metadata:
+          name: kube-vip
+          namespace: kube-system
+        spec:
+          containers:
+          - args: [manager]
+            env:
+            - name: cp_enable
+              value: "true"
+            - name: vip_arp
+              value: "true"
+            - name: vip_leaderelection
+              value: "true"
+            - name: vip_address
+              value: {{ ns.endpoint_ip }}
+            - name: vip_interface
+              value: {{ '{{ .DefaultNetworkInterfaceName }}' }}
+            - name: vip_leaseduration
+              value: "15"
+            - name: vip_renewdeadline
+              value: "10"
+            - name: vip_retryperiod
+              value: "2"
+            image: ghcr.io/kube-vip/kube-vip:v0.5.0
+            imagePullPolicy: IfNotPresent
+            name: kube-vip
+            securityContext:
+              capabilities:
+                add: [NET_ADMIN, NET_RAW]
+            volumeMounts:
+            - mountPath: /etc/kubernetes/admin.conf
+              name: kubeconfig
+          hostNetwork: true
+          hostAliases:
+            - hostnames: [kubernetes]
+              ip: 127.0.0.1
+          volumes:
+          - hostPath:
+              path: /etc/kubernetes/admin.conf
+              type: FileOrCreate
+            name: kubeconfig
+      owner: root:root
+      path: /etc/kubernetes/manifests/kube-vip.yaml
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: ByoMachineTemplate
+metadata:
+  name: {{ cluster_name }}-cp-template
+  namespace: default
+spec:
+  template:
+    spec:
+      installerRef:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: K8sInstallerConfigTemplate
+        name: {{ cluster_name }}-cp-installer
+        namespace: default
+      selector:
+        matchExpressions:
+          - key: host-id
+            operator: In
+            values:
+            {% for m in cluster.cluster_masters %}
+              - "{{ m.host_id }}"
+            {% endfor %}
+
+# 5. Workers (Loop for Pinning)
+{% for worker in cluster.cluster_workers %}
+---
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineDeployment
+metadata:
+  name: {{ cluster_name }}-worker-{{ worker.host_id }}
+  namespace: default
+spec:
+  clusterName: {{ cluster_name }}
+  replicas: 1
+  selector:
+    matchLabels:
+      cluster.x-k8s.io/cluster-name: {{ cluster_name }}
+      pool: worker-{{ worker.host_id }}
+  template:
+    metadata:
+      labels:
+        cluster.x-k8s.io/cluster-name: {{ cluster_name }}
+        pool: worker-{{ worker.host_id }}
+    spec:
+      clusterName: {{ cluster_name }}
+      version: {{ cluster_k8s_version }}  # <--- DYNAMIC VERSION
+      bootstrap:
+        configRef:
+          apiVersion: bootstrap.cluster.x-k8s.io/v1beta1
+          kind: KubeadmConfigTemplate
+          name: {{ cluster_name }}-md-base
+      infrastructureRef:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: ByoMachineTemplate
+        name: {{ cluster_name }}-worker-{{ worker.host_id }}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: ByoMachineTemplate
+metadata:
+  name: {{ cluster_name }}-worker-{{ worker.host_id }}
+  namespace: default
+spec:
+  template:
+    spec:
+      installerRef:
+        apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+        kind: K8sInstallerConfigTemplate
+        name: {{ cluster_name }}-worker-installer
+        namespace: default
+      selector:
+        matchLabels:
+          host-id: "{{ worker.host_id }}"
+{% endfor %}
+
+# 6. Installers
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: K8sInstallerConfigTemplate
+metadata:
+  name: {{ cluster_name }}-cp-installer
+  namespace: default
+spec:
+  template:
+    spec:
+      bundleRepo: projects.registry.vmware.com/cluster_api_provider_bringyourownhost
+      bundleType: k8s
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: K8sInstallerConfigTemplate
+metadata:
+  name: {{ cluster_name }}-worker-installer
+  namespace: default
+spec:
+  template:
+    spec:
+      bundleRepo: projects.registry.vmware.com/cluster_api_provider_bringyourownhost
+      bundleType: k8s
+{% endfor %}

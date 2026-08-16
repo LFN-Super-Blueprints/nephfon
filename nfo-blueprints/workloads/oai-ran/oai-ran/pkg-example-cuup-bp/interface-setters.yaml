@@ -1,0 +1,13 @@
+# Interface-to-NIC mapping for CUUP
+# Values are injected via PackageVariant apply-setters
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: interface-setters
+  annotations:
+    config.kubernetes.io/local-config: "true"
+data:
+  networking-mode: "vlan" # kpt-set: ${networking-mode}
+  e1-interface: "eno49" # kpt-set: ${e1-interface}
+  f1u-interface: "eno49" # kpt-set: ${f1u-interface}
+  n3-interface: "eno49" # kpt-set: ${n3-interface}

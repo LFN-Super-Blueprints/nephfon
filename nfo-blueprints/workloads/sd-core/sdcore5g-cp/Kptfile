@@ -1,0 +1,12 @@
+apiVersion: kpt.dev/v1
+kind: Kptfile
+metadata:
+  name: sdcore5g-cp
+  annotations:
+    config.kubernetes.io/local-config: "true"
+info:
+  description: this package represents sdcore5g NFs, which are required to perform E2E conn testing
+pipeline:
+  mutators:
+    - image: ghcr.io/kptdev/krm-functions-catalog/set-namespace:v0.4.1
+      configPath: package-context.yaml

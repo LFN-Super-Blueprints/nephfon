@@ -1,0 +1,20 @@
+# RootSync for OAI-RAN workload cluster
+# Creates a GitOps sync between the downstream Git repo and the ran cluster.
+# Config Sync watches this repo and applies rendered packages to the cluster.
+#
+# Apply on the RAN workload cluster:
+#   kubectl apply -f rootsync-ran.yaml --kubeconfig ran.kubeconfig
+---
+apiVersion: configsync.gke.io/v1beta1
+kind: RootSync
+metadata:
+  name: root-sync
+  namespace: config-management-system
+spec:
+  sourceFormat: unstructured
+  git:
+    repo: https://github.com/YOUR-ORG/nephio-ran.git  # ← Change to your downstream repo
+    branch: main
+    dir: /
+    auth: none
+    period: 15s

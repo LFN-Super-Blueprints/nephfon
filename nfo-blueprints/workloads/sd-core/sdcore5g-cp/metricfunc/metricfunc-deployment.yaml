@@ -1,0 +1,44 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metricfunc
+  labels:
+    release: sdcore5g
+    app: metricfunc
+spec:
+  replicas: 1
+  #serviceName: metricfunc-headless
+  selector:
+    matchLabels:
+      release: sdcore5g
+      app: metricfunc
+  template:
+    metadata:
+      labels:
+        release: sdcore5g
+        app: metricfunc
+    spec:
+      serviceAccountName: metricfunc
+      containers:
+      - name: metricfunc
+        image: omecproject/metricfunc:rel-1.6.0
+        imagePullPolicy: IfNotPresent
+        stdin: true
+        tty: true
+        command: [ "/opt/metricfunc-run.sh" ]
+        env:
+        - name: GIN_MODE
+          value: release
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        volumeMounts:
+        - name: nf-config
+          mountPath: /opt
+      volumes:
+      - name: nf-config
+        configMap:
+          name: metricfunc
+          defaultMode: 493

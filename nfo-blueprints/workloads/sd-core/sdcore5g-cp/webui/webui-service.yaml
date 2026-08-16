@@ -1,0 +1,21 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webui
+  labels:
+    app.kubernetes.io/version: "v3.1.1"
+    project: sdcore5g
+    nf: webui
+spec:
+  type: ClusterIP
+  selector:
+    project: sdcore5g
+    nf: webui
+  ports:
+  - name: urlport-http
+    port: 5000
+    protocol: TCP
+  - name: grpc
+    port: 9876
+    protocol: TCP

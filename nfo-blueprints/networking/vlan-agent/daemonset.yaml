@@ -1,0 +1,90 @@
+# vlan-agent DaemonSet
+# Runs on every node and automatically creates the VLAN sub-interfaces
+# (<nic>.<vlanID>) that Nephio's nad-fn writes into the NAD "master"
+# fields. Replaces the manual per-node script from the Nephio docs.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: vlan-agent
+  namespace: kube-system
+  labels:
+    app: vlan-agent
+    nephio.org/cluster-name: example # kpt-set: ${cluster-name}
+spec:
+  selector:
+    matchLabels:
+      app: vlan-agent
+  template:
+    metadata:
+      labels:
+        app: vlan-agent
+    spec:
+      serviceAccountName: vlan-agent
+      hostNetwork: true
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: vlan-agent
+          image: alpine:3.19
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["NET_ADMIN"]
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: STATIC_MASTER_IF
+              valueFrom:
+                configMapKeyRef:
+                  name: vlan-agent-config
+                  key: master-interface
+                  optional: true
+            - name: STATIC_VLAN_RANGE
+              valueFrom:
+                configMapKeyRef:
+                  name: vlan-agent-config
+                  key: vlan-range
+                  optional: true
+            - name: RECONCILE_INTERVAL
+              valueFrom:
+                configMapKeyRef:
+                  name: vlan-agent-config
+                  key: reconcile-interval
+                  optional: true
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "Installing dependencies (curl, jq, iproute2)..."
+              until apk add --no-cache curl jq iproute2 >/dev/null 2>&1; do
+                echo "apk add failed, retrying in 10s..."
+                sleep 10
+              done
+              exec /bin/sh /scripts/vlan-agent.sh
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: lib-modules
+              mountPath: /lib/modules
+              readOnly: true
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+      volumes:
+        - name: scripts
+          configMap:
+            name: vlan-agent-config
+            items:
+              - key: vlan-agent.sh
+                path: vlan-agent.sh
+        - name: lib-modules
+          hostPath:
+            path: /lib/modules

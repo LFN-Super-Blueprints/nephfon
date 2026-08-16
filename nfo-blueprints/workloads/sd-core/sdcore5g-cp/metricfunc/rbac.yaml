@@ -1,0 +1,53 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: metricfunc
+  namespace: sdcore5g-cp
+  labels:
+    release: sdcore5g
+    app: metricfunc
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: metricfunc
+  namespace: sdcore5g-cp
+  labels:
+    release: sdcore5g
+    app: metricfunc
+rules:
+  - apiGroups:
+      - ""
+      - extensions
+      - batch
+      - apps
+    verbs:
+      - get
+      - list
+      - patch
+    resources:
+      - statefulsets
+      - daemonsets
+      - jobs
+      - pods
+      - services
+      - endpoints
+      - configmaps
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: metricfunc
+  namespace: sdcore5g-cp
+  labels:
+    release: sdcore5g
+    app: metricfunc
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: metricfunc
+subjects:
+  - kind: ServiceAccount
+    name: metricfunc
+    namespace: sdcore5g-cp

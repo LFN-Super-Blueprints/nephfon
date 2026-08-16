@@ -1,0 +1,51 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: pcf
+  labels:
+    project: sdcore5g
+    nf: pcf
+rules:
+  - apiGroups:
+      - ""
+      - extensions
+      - batch
+      - apps
+    verbs:
+      - get
+      - list
+      - patch
+    resources:
+      - statefulsets
+      - daemonsets
+      - jobs
+      - pods
+      - services
+      - endpoints
+      - configmaps
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pcf
+  labels:
+    project: sdcore5g
+    nf: pcf
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: pcf
+subjects:
+  - kind: ServiceAccount
+    name: pcf
+    namespace: default
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pcf
+  namespace: sdcore5g-cp
+  labels:
+    project: sdcore5g
+    nf: pcf  

@@ -1,0 +1,51 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: udr
+  labels:
+    project: sdcore5g
+    nf: udr
+rules:
+  - apiGroups:
+      - ""
+      - extensions
+      - batch
+      - apps
+    verbs:
+      - get
+      - list
+      - patch
+    resources:
+      - statefulsets
+      - daemonsets
+      - jobs
+      - pods
+      - services
+      - endpoints
+      - configmaps
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: udr
+  labels:
+    project: sdcore5g
+    nf: udr
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: udr
+subjects:
+  - kind: ServiceAccount
+    name: udr
+    namespace: default
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: udr
+  namespace: sdcore5g-cp
+  labels:
+    project: sdcore5g
+    nf: udr

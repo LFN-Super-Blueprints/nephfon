@@ -1,0 +1,53 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ausf
+  namespace: default
+  labels:
+    release: sdcore
+    app: ausf
+rules:
+  - apiGroups:
+      - ""
+      - extensions
+      - batch
+      - apps
+    verbs:
+      - get
+      - list
+      - patch
+    resources:
+      - statefulsets
+      - daemonsets
+      - jobs
+      - pods
+      - services
+      - endpoints
+      - configmaps
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ausf
+  namespace: default
+  labels:
+    release: sdcore
+    app: ausf
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ausf
+subjects:
+  - kind: ServiceAccount
+    name: ausf
+    namespace: default
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ausf
+  namespace: sdcore5g-cp
+  labels:
+    release: sdcore
+    app: ausf    

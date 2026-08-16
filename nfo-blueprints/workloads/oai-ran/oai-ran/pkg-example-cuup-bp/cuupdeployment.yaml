@@ -1,0 +1,11 @@
+apiVersion: workload.nephio.org/v1alpha1
+kind: NFDeployment
+metadata: 
+  name: cuup-example
+  namespace: example
+spec:
+  provider: cuup.openairinterface.org
+  parametersRefs:
+    - apiVersion: workload.nephio.org/v1alpha1
+      kind: NFConfig
+      name: cuup-nf-config

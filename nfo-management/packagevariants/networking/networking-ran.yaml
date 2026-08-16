@@ -1,0 +1,20 @@
+# Multus CNI PackageVariant for RAN cluster
+# Multus is still required — it enables macvlan secondary interfaces on pods
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: PackageVariant
+metadata:
+  name: multus-ran
+spec:
+  upstream:
+    repo: nephio-workload-blueprints
+    package: networking/multus-cni
+  downstream:
+    repo: ran
+    package: multus-cni
+  annotations:
+    approval.nephio.org/policy: always
+  pipeline:
+    mutators:
+      - image: ghcr.io/kptdev/krm-functions-catalog/apply-setters:v0.2
+        configMap:
+          cluster-name: ran

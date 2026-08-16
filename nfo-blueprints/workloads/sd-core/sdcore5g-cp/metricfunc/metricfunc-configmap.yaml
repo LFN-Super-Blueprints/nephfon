@@ -1,0 +1,67 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: metricfunc
+  labels:
+    release: sdcore5g
+    app: metricfunc
+data:
+  metricfunc-run.sh: |
+    #!/bin/sh
+    
+    # Copyright 2024-present Intel Corporation
+    # Copyright 2022-present Open Networking Foundation
+    #
+    # SPDX-License-Identifier: Apache-2.0
+    
+    set -xe
+    
+    CFGPATH=/home
+    FILENAME=metricscfg.yaml
+    # copy config file from configmap (/opt) to a general directory (/home)
+    cp /opt/$FILENAME $CFGPATH/$FILENAME
+    cat $CFGPATH/$FILENAME
+    echo ""
+    
+    GOTRACEBACK=crash metricfunc -cfg $CFGPATH/$FILENAME
+    
+  metricscfg.yaml: |-
+    configuration:
+      apiServer:
+        addr: POD_IP
+        port: 9301
+      controllerFlag: false
+      debugProfileServer:
+        addr: POD_IP
+        port: 5001
+      metricFuncEndPoint:
+        addr: metricfunc.omec.svc
+        port: 5001
+      nfStreams:
+      - topic:
+          topicGroup: analytics
+          topicName: sdcore-data-source-amf
+        urls:
+        - port: 9092
+          uri: kafka-headless
+      - topic:
+          topicGroup: analytics
+          topicName: sdcore-data-source-smf
+        urls:
+        - port: 9092
+          uri: kafka-headless
+      onosApiServer:
+        addr: onosapp
+        port: 9301
+      prometheusServer:
+        addr: POD_IP
+        port: 9089
+      rocEndPoint:
+        addr: aether-roc-umbrella-aether-roc-gui-v2-1-external.aether-roc.svc
+        port: 80
+    info:
+      description: Metrics initial local configuration
+      version: 1.0.0
+    logger:
+      level: info

@@ -1,0 +1,51 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: nssf
+  namespace: default
+  labels:
+    project: sdcore5g
+    nf: nssf
+rules:
+  - apiGroups:
+      - ""
+      - extensions
+      - batch
+      - apps
+    verbs:
+      - get
+      - list
+      - patch
+    resources:
+      - statefulsets
+      - daemonsets
+      - jobs
+      - pods
+      - services
+      - endpoints
+      - configmaps
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: nssf
+  labels:
+    project: sdcore5g
+    nf: nssf
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: nssf
+subjects:
+  - kind: ServiceAccount
+    name: nssf
+    namespace: default
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nssf
+  labels:
+    project: sdcore5g
+    nf: nssf  

@@ -1,0 +1,9 @@
+# Links the CAPI Cluster CR to the Nephio workload context
+# ClusterContext for the SD-Core workload cluster
+
+apiVersion: infra.nephio.org/v1alpha1
+kind: ClusterContext
+metadata:
+  name: core
+spec:
+  siteCode: core-site

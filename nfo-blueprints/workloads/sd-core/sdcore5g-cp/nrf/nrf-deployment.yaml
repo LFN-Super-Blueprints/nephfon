@@ -1,0 +1,60 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nrf
+  labels:
+    app.kubernetes.io/version: "v3.1.1"
+    project: sdcore5g
+    nf: nrf
+spec:
+  replicas: 1
+  #serviceName: nrf-headless
+  selector:
+    matchLabels:
+      project: sdcore5g
+      nf: nrf
+  template:
+    metadata:
+      labels:
+        project: sdcore5g
+        nf: nrf
+    spec:
+      serviceAccountName: nrf
+      containers:
+      - name: nrf
+        image: omecproject/5gc-nrf:rel-1.4.0
+        imagePullPolicy: IfNotPresent
+        stdin: true
+        tty: true
+        command: ["/free5gc/script/nrf-run.sh"]
+        env:
+        - name: GRPC_GO_LOG_VERBOSITY_LEVEL
+          value: "99"
+        - name: GRPC_GO_LOG_SEVERITY_LEVEL
+          value: "info"
+        - name: GRPC_TRACE
+          value: "all"
+        - name: GRPC_VERBOSITY
+          value: "debug"
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: MANAGED_BY_CONFIG_POD 
+          value: "true"
+        volumeMounts:
+        - name: run-script
+          mountPath: /free5gc/script/nrf-run.sh
+          subPath: nrf-run.sh
+        - name: nf-config
+          mountPath: /free5gc/config
+      volumes:
+      - name: run-script
+        configMap:
+          name: nrf
+          defaultMode: 493
+      - name: nf-config
+        configMap:
+          name: nrf
+          defaultMode: 493

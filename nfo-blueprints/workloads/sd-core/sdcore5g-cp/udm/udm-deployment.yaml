@@ -1,0 +1,71 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: udm
+  labels:
+    app.kubernetes.io/version: "v3.1.1"
+    project: sdcore5g
+    nf: udm
+spec:
+  replicas: 1
+  #serviceName: udm-headless
+  selector:
+    matchLabels:
+      project: sdcore5g
+      nf: udm
+  template:
+    metadata:
+      labels:
+        project: sdcore5g
+        nf: udm
+    spec:
+      serviceAccountName: udm
+      initContainers:
+      - name: wait-udm-module
+        image: omecproject/pod-init:1.0.0
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', 'until nslookup udm; do echo waiting for udm; sleep 4; done;']
+      - name: wait-udr-module
+        image: omecproject/pod-init:1.0.0
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', 'until nslookup udr; do echo waiting for udr; sleep 4; done;']
+      containers:
+      - name: udm
+        image: omecproject/5gc-udm:rel-1.4.0
+        imagePullPolicy: IfNotPresent
+        stdin: true
+        tty: true
+        command: ["/free5gc/script/udm-run.sh"]
+        env:
+        - name: GRPC_GO_LOG_VERBOSITY_LEVEL
+          value: "99"
+        - name: GRPC_GO_LOG_SEVERITY_LEVEL
+          value: "info"
+        - name: GRPC_TRACE
+          value: "all"
+        - name: GRPC_VERBOSITY
+          value: "debug"
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: MANAGED_BY_CONFIG_POD 
+          value: "true"
+        volumeMounts:
+        - name: run-script
+          mountPath: /free5gc/script/udm-run.sh
+          subPath: udm-run.sh
+        - name: nf-config
+          mountPath: /free5gc/config
+      volumes:
+      - name: run-script
+        configMap:
+          name: udm
+          defaultMode: 493
+      - name: nf-config
+        configMap:
+          name: udm
+          defaultMode: 493
+      - name: config-dir
+        emptyDir: {}    

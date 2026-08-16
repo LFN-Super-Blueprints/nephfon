@@ -1,0 +1,24 @@
+apiVersion: kpt.dev/v1
+kind: Kptfile
+metadata:
+  name: oai-ran-network
+  annotations:
+    config.kubernetes.io/local-config: "true"
+info:
+  description: |
+    OAI CUCP network blueprint for BYOH clusters.
+    Generates IPClaims and NADs automatically via interface-fn + nad-fn pipeline.
+    Uses Network CRs instead of NetworkInstance for IP pool management.
+  readinessGates:
+    - conditionType: req.nephio.org/v1alpha1.Interface.n2
+    - conditionType: req.nephio.org/v1alpha1.Interface.e1
+    - conditionType: req.nephio.org/v1alpha1.Interface.f1c
+
+pipeline:
+  mutators:
+  - image: docker.io/nephio/interface-fn:v2.0.0
+    configMap:
+      debug: "true"
+  - image: docker.io/nephio/nad-fn:latest
+    configMap:
+      debug: "true"

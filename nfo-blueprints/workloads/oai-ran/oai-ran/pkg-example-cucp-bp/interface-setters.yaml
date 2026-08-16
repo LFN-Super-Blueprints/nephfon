@@ -1,0 +1,14 @@
+# Interface-to-NIC mapping for CUCP
+# Values are injected via PackageVariant apply-setters
+# User only needs to set the correct physical NIC names in the PV configMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: interface-setters
+  annotations:
+    config.kubernetes.io/local-config: "true"
+data:
+  networking-mode: "vlan" # kpt-set: ${networking-mode}
+  e1-interface: "eno49" # kpt-set: ${e1-interface}
+  f1c-interface: "eno49" # kpt-set: ${f1c-interface}
+  n2-interface: "eno49" # kpt-set: ${n2-interface}

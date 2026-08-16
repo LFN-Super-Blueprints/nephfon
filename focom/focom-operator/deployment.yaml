@@ -1,0 +1,137 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: focom-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: focom-controller
+  namespace: focom-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: focom-controller-role
+rules:
+  # FocomProvisioningRequest access
+  - apiGroups: ["focom.nephio.org"]
+    resources: ["focomprovisioningrequests"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["focom.nephio.org"]
+    resources: ["focomprovisioningrequests/status"]
+    verbs: ["get", "update", "patch"]
+  
+  # O2IMS ProvisioningRequest access
+  - apiGroups: ["o2ims.provisioning.oran.org"]
+    resources: ["provisioningrequests"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["o2ims.provisioning.oran.org"]
+    resources: ["provisioningrequests/status"]
+    verbs: ["get", "watch"]
+  
+  # ClusterTemplate access for validation
+  - apiGroups: ["o2ims.provisioning.oran.org"]
+    resources: ["clustertemplates"]
+    verbs: ["get", "list", "watch"]
+  
+  # ByoHost access for feasibility checks
+  - apiGroups: ["infrastructure.cluster.x-k8s.io"]
+    resources: ["byohosts"]
+    verbs: ["get", "list", "watch"]
+  
+  # CAPI resources for upgrades (Phase 3)
+  - apiGroups: ["controlplane.cluster.x-k8s.io"]
+    resources: ["kubeadmcontrolplanes"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["cluster.x-k8s.io"]
+    resources: ["machinedeployments", "clusters", "machines"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  
+  # Core resources for kopf
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  
+  # Coordination for leader election
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: focom-controller-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: focom-controller-role
+subjects:
+  - kind: ServiceAccount
+    name: focom-controller
+    namespace: focom-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: focom-controller
+  namespace: focom-system
+  labels:
+    app: focom-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: focom-controller
+  template:
+    metadata:
+      labels:
+        app: focom-controller
+    spec:
+      serviceAccountName: focom-controller
+      # Must run on the management node where input.json exists
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+      containers:
+        - name: controller
+          image: focom-controller:local
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+              name: healthz
+          env:
+            - name: INPUT_JSON_PATH
+              value: "/workspace/input.json"
+            - name: REPO_DIR
+              value: "/workspace"
+          volumeMounts:
+            - name: repo-dir
+              mountPath: /workspace
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 50m
+              memory: 64Mi
+      volumes:
+        # Mount the repo directory - path auto-configured by mgmt.sh
+        - name: repo-dir
+          hostPath:
+            path: /opt/byoh-o2ims-focom  # Auto-replaced with actual repo path
+            type: Directory
+

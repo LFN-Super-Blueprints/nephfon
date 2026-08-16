@@ -1,0 +1,154 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: o2ims-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: o2ims-controller
+  namespace: o2ims-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: o2ims-controller-role
+rules:
+  # ProvisioningRequest access
+  - apiGroups: ["o2ims.provisioning.oran.org"]
+    resources: ["provisioningrequests"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["o2ims.provisioning.oran.org"]
+    resources: ["provisioningrequests/status"]
+    verbs: ["get", "update", "patch"]
+  
+  # ClusterTemplate access (Feature F3)
+  - apiGroups: ["o2ims.provisioning.oran.org"]
+    resources: ["clustertemplates"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["o2ims.provisioning.oran.org"]
+    resources: ["clustertemplates/status"]
+    verbs: ["get", "update", "patch"]
+  
+  # CAPI Cluster resources
+  - apiGroups: ["cluster.x-k8s.io"]
+    resources: ["clusters", "machines", "machinedeployments", "machinesets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["cluster.x-k8s.io"]
+    resources: ["clusters/status", "machines/status"]
+    verbs: ["get", "watch"]
+  
+  # BYOH infrastructure resources
+  - apiGroups: ["infrastructure.cluster.x-k8s.io"]
+    resources: ["byoclusters", "byomachines", "byomachinetemplates", "byohosts", "k8sinstallerconfigtemplates"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["infrastructure.cluster.x-k8s.io"]
+    resources: ["byohosts/status", "byomachines/status"]
+    verbs: ["get", "watch"]
+  
+  # Bootstrap resources
+  - apiGroups: ["bootstrap.cluster.x-k8s.io"]
+    resources: ["kubeadmconfigs", "kubeadmconfigtemplates"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  
+  # Control plane resources
+  - apiGroups: ["controlplane.cluster.x-k8s.io"]
+    resources: ["kubeadmcontrolplanes"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["controlplane.cluster.x-k8s.io"]
+    resources: ["kubeadmcontrolplanes/status"]
+    verbs: ["get", "watch"]
+  
+  # Core resources for kopf
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+  
+  # Batch resources for Ansible Jobs
+  - apiGroups: ["batch"]
+    resources: ["jobs", "jobs/status"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  
+  # Coordination for leader election
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: o2ims-controller-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: o2ims-controller-role
+subjects:
+  - kind: ServiceAccount
+    name: o2ims-controller
+    namespace: o2ims-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: o2ims-controller
+  namespace: o2ims-system
+  labels:
+    app: o2ims-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: o2ims-controller
+  template:
+    metadata:
+      labels:
+        app: o2ims-controller
+    spec:
+      serviceAccountName: o2ims-controller
+      containers:
+        - name: controller
+          image: o2ims-controller:local
+          imagePullPolicy: Never
+          env:
+            # These paths are auto-configured by mgmt.sh - no manual changes needed!
+            - name: BYOH_PROJECT_DIR
+              value: "/opt/byoh-o2ims-focom"  # Auto-replaced with actual repo path
+            - name: BYOH_SSH_DIR
+              value: "/root/.ssh"  # Auto-replaced with $HOME/.ssh
+            - name: BYOH_KUBE_DIR
+              value: "/root/.kube"  # Auto-replaced with $HOME/.kube
+          ports:
+            - containerPort: 8080
+              name: healthz
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            limits:
+              cpu: 500m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: o2ims-controller
+  namespace: o2ims-system
+spec:
+  selector:
+    app: o2ims-controller
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: healthz

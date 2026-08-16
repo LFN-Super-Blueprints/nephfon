@@ -1,0 +1,19 @@
+# Platform Addons PackageVariant for Core cluster
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: PackageVariant
+metadata:
+  name: addons-core
+spec:
+  upstream:
+    repo: nephio-workload-blueprints
+    package: platform-addons
+  downstream:
+    repo: core
+    package: platform-addons
+  annotations:
+    approval.nephio.org/policy: always
+  pipeline:
+    mutators:
+      - image: ghcr.io/kptdev/krm-functions-catalog/apply-setters:v0.2
+        configMap:
+          cluster-name: core

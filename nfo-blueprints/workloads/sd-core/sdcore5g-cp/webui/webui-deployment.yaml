@@ -1,0 +1,60 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webui
+  labels:
+    app.kubernetes.io/version: "v3.1.1"
+    project: sdcore5g
+    nf: webui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      project: sdcore5g
+      nf: webui
+  template:
+    metadata:
+      labels:
+        project: sdcore5g
+        nf: webui
+    spec:
+      serviceAccountName: webui
+      initContainers:
+      - name: wait-webui-module
+        image: omecproject/pod-init:1.0.0
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', 'until nslookup webui; do echo waiting for webui; sleep 4; done;']
+      containers:
+      - name: webui
+        image: omecproject/5gc-webui:rel-1.4.0
+        env:
+        - name: GRPC_GO_LOG_VERBOSITY_LEVEL
+          value: "99"
+        - name: GRPC_GO_LOG_SEVERITY_LEVEL
+          value: "info"
+        - name: GRPC_TRACE
+          value: "all"
+        - name: GRPC_VERBOSITY
+          value: "debug"
+        - name: CONFIGPOD_DEPLOYMENT
+          value: "5G"
+        imagePullPolicy: IfNotPresent
+        stdin: true
+        tty: true
+        command: ["/free5gc/script/webui-run.sh"]
+        volumeMounts:
+        - name: run-script
+          mountPath: /free5gc/script/webui-run.sh
+          subPath: webui-run.sh
+        - name: nf-config
+          mountPath: /free5gc/config
+      volumes:
+      - name: run-script
+        configMap:
+          name: webui
+          defaultMode: 493
+      - name: nf-config
+        configMap:
+          name: webui
+          defaultMode: 493

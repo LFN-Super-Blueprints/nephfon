@@ -1,0 +1,391 @@
+# ==========================================
+# PLAY 1: Key Rotation & Inventory Setup
+# ==========================================
+- name: 1. Rotate Keys & Setup Inventory
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    input: "{{ lookup('file', 'input.json') | from_json }}"
+    kubeconfig: "~/.kube/config"
+  
+  tasks:
+    - name: Delete old BootstrapKubeconfig objects
+      shell: |
+        kubectl --kubeconfig {{ kubeconfig }} delete bootstrapkubeconfig --all -n default --ignore-not-found=true
+
+    - name: Get API Server Endpoint
+      shell: |
+        kubectl --kubeconfig {{ kubeconfig }} config view -ojsonpath='{.clusters[0].cluster.server}'
+      register: api_server
+    
+    - name: Get CA Cert
+      shell: |
+        kubectl --kubeconfig {{ kubeconfig }} config view --flatten -ojsonpath='{.clusters[0].cluster.certificate-authority-data}'
+      register: ca_cert
+
+    - name: Create Fresh BootstrapKubeconfig
+      kubernetes.core.k8s:
+        kubeconfig: "{{ kubeconfig }}"
+        state: present
+        definition:
+          apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+          kind: BootstrapKubeconfig
+          metadata:
+            name: "bootstrap-kubeconfig"
+            namespace: default
+          spec:
+            apiserver: "{{ api_server.stdout }}"
+            certificate-authority-data: "{{ ca_cert.stdout }}"
+            token-ttl: 1h
+
+    - name: Extract Token Data
+      shell: |
+        kubectl --kubeconfig {{ kubeconfig }} get bootstrapkubeconfig bootstrap-kubeconfig -n default -o=jsonpath='{.status.bootstrapKubeconfigData}'
+      register: bootstrap_data
+      until: bootstrap_data.stdout != ""
+      retries: 10
+      delay: 2
+
+    - name: Save Token to File
+      copy:
+        content: "{{ bootstrap_data.stdout }}"
+        dest: "./bootstrap-kubeconfig.conf"
+        mode: '0600'
+
+    - name: Add physical hosts to Ansible inventory
+      add_host:
+        name: "{{ item.host_ip }}"
+        groups: physical_nodes
+        ansible_user: "{{ item.host_user }}"
+        ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+        byoh_hostname: "{{ item.host_name }}"
+        byoh_id: "{{ item.host_id }}"
+      loop: "{{ input.hosts }}"
+
+# ==========================================
+# PLAY 2: Host Provisioning (Physical Layer)
+# ==========================================
+- name: 2. Configure OS & Install Agent
+  hosts: physical_nodes
+  become: true
+  vars:
+    # 1. Load Input Data
+    input: "{{ lookup('file', 'input.json') | from_json }}"
+    
+    # 2. Set Target Version from JSON (Default to 1.34.0 if missing)
+    target_k8s_version: "{{ input.k8s_version | default('1.34.0') }}"
+    
+    # 3. Derive Package Version (e.g. 1.34.0-1.1)
+    k8s_pkg_version: "{{ target_k8s_version }}-1.1"
+    
+    # 4. Derive Repo Version (e.g. v1.34)
+    # Splits '1.34.0' -> ['1', '34', '0'] -> Takes first two parts
+    k8s_repo_version: "v{{ target_k8s_version.split('.')[0] }}.{{ target_k8s_version.split('.')[1] }}"
+    
+    agent_binary: "./byoh-hostagent"
+  
+  tasks:
+    - name: Disable swap
+      shell: |
+        swapoff -a
+        sed -i '/swap/d' /etc/fstab
+
+    - name: Load kernel modules
+      shell: |
+        modprobe overlay
+        modprobe br_netfilter
+        modprobe 8021q
+        echo "overlay" > /etc/modules-load.d/containerd.conf
+        echo "br_netfilter" >> /etc/modules-load.d/containerd.conf
+        echo "8021q" >> /etc/modules-load.d/containerd.conf
+
+    - name: Set sysctl params
+      shell: |
+        echo "net.bridge.bridge-nf-call-ip6tables = 1" > /etc/sysctl.d/kubernetes.conf
+        echo "net.bridge.bridge-nf-call-iptables = 1" >> /etc/sysctl.d/kubernetes.conf
+        echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.d/kubernetes.conf
+        sysctl --system
+
+    # ==================================================================
+    # APT LOCK FIX: Stop ALL background apt services & timers
+    # Root cause: Ubuntu runs apt-daily.timer, apt-daily-upgrade.timer,
+    # and unattended-upgrades independently. ALL must be stopped or
+    # they re-acquire locks between our apt operations.
+    # ==================================================================
+    - name: Stop and disable ALL apt background services
+      shell: |
+        # Stop all apt-related services
+        systemctl stop unattended-upgrades.service 2>/dev/null || true
+        systemctl stop apt-daily.service 2>/dev/null || true
+        systemctl stop apt-daily-upgrade.service 2>/dev/null || true
+        # Stop the timers that trigger them
+        systemctl stop apt-daily.timer 2>/dev/null || true
+        systemctl stop apt-daily-upgrade.timer 2>/dev/null || true
+        # Disable everything so nothing restarts
+        systemctl disable unattended-upgrades.service 2>/dev/null || true
+        systemctl disable apt-daily.service 2>/dev/null || true
+        systemctl disable apt-daily-upgrade.service 2>/dev/null || true
+        systemctl disable apt-daily.timer 2>/dev/null || true
+        systemctl disable apt-daily-upgrade.timer 2>/dev/null || true
+        # Mask them to prevent any trigger from restarting them
+        systemctl mask apt-daily.service 2>/dev/null || true
+        systemctl mask apt-daily-upgrade.service 2>/dev/null || true
+        echo "All apt background services stopped, disabled, and masked"
+      changed_when: false
+
+    - name: Kill any running apt/dpkg processes
+      shell: |
+        # Kill unattended-upgrade process if running
+        killall -9 unattended-upgrade 2>/dev/null || true
+        killall -9 unattended-upgr 2>/dev/null || true
+        # Kill any apt/dpkg processes
+        killall -9 apt-get 2>/dev/null || true
+        killall -9 apt 2>/dev/null || true
+        killall -9 dpkg 2>/dev/null || true
+        sleep 3
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Wait for APT locks to be released
+      shell: |
+        for i in $(seq 1 120); do
+          if ! fuser /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock /var/cache/apt/archives/lock >/dev/null 2>&1; then
+            echo "APT locks are free on attempt $i"
+            exit 0
+          fi
+          echo "Waiting for APT lock... attempt $i/120"
+          sleep 5
+        done
+        echo "Force-clearing APT locks after 10 minute timeout"
+        rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock /var/cache/apt/archives/lock
+        exit 0
+      changed_when: false
+
+    - name: Fix any interrupted dpkg
+      shell: dpkg --configure -a
+      ignore_errors: yes
+
+    - name: Install Containerd
+      apt:
+        name: containerd
+        state: present
+        update_cache: yes
+      register: containerd_result
+      retries: 5
+      delay: 10
+      until: containerd_result is success
+
+    - name: Configure Containerd (SystemdCgroup Fix)
+      shell: |
+        mkdir -p /etc/containerd
+        containerd config default > /etc/containerd/config.toml
+        sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+        systemctl restart containerd
+
+    # ---- Determine cluster_type for this host from input.json ----
+    - name: Determine cluster type for this host
+      set_fact:
+        host_cluster_type: >-
+          {%- set ns = namespace(found='') -%}
+          {%- for cluster in input.clusters -%}
+            {%- for m in cluster.cluster_masters -%}
+              {%- if m.host_id == byoh_id | int -%}
+                {%- set ns.found = cluster.cluster_type | default('') -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {%- for w in cluster.cluster_workers -%}
+              {%- if w.host_id == byoh_id | int -%}
+                {%- set ns.found = cluster.cluster_type | default('') -%}
+              {%- endif -%}
+            {%- endfor -%}
+          {%- endfor -%}
+          {{ ns.found }}
+
+    - name: Show detected cluster type
+      debug:
+        msg: "Host {{ byoh_hostname }} (ID={{ byoh_id }}) -> cluster_type={{ host_cluster_type }}"
+
+    # ---- CORE Cluster Pre-requisites ----
+    - name: "[CORE] Increase inotify limits"
+      shell: |
+        sysctl -w fs.inotify.max_user_watches=524288
+        sysctl -w fs.inotify.max_user_instances=512
+        sysctl -w fs.file-max=2097152
+        echo "fs.inotify.max_user_watches=524288" >> /etc/sysctl.conf
+        echo "fs.inotify.max_user_instances=512" >> /etc/sysctl.conf
+        echo "fs.file-max=2097152" >> /etc/sysctl.conf
+      when: host_cluster_type == "core"
+
+    - name: "[CORE] Fix containerd sandbox image (prevent UPF pod stuck)"
+      shell: |
+        sed -i 's|sandbox_image = .*|sandbox_image = "registry.k8s.io/pause:3.3"|' /etc/containerd/config.toml
+        systemctl restart containerd
+      when: host_cluster_type == "core"
+
+    # ---- RAN Cluster Pre-requisites ----
+    - name: "[RAN] Allocate 1Gi hugepages"
+      shell: |
+        echo 20 > /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages
+        echo 'vm.nr_hugepages=20' > /etc/sysctl.d/99-hugepages.conf
+        sysctl -p /etc/sysctl.d/99-hugepages.conf
+      when: host_cluster_type == "ran"
+      ignore_errors: yes
+
+
+    - name: Wait for APT locks before K8s packages
+      shell: |
+        for i in $(seq 1 60); do
+          if ! fuser /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock /var/cache/apt/archives/lock >/dev/null 2>&1; then
+            echo "APT locks are free"
+            exit 0
+          fi
+          echo "Waiting for APT lock... attempt $i/60"
+          sleep 5
+        done
+        echo "Force-clearing APT locks"
+        rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock /var/cache/apt/archives/lock
+        dpkg --configure -a 2>/dev/null || true
+        exit 0
+      changed_when: false
+
+    - name: Install K8s Prereqs
+      apt:
+        pkg: [apt-transport-https, ca-certificates, curl, gpg, socat, ebtables, ethtool, conntrack]
+        state: present
+      register: k8s_prereqs_result
+      retries: 5
+      delay: 10
+      until: k8s_prereqs_result is success
+
+    # UPDATED TASK: Uses the dynamic variables with built-in lock waiting
+    - name: Add K8s Repo & Install Binaries
+      shell: |
+        # --- Function to wait for APT locks ---
+        wait_for_apt() {
+          local max_attempts=60
+          for i in $(seq 1 $max_attempts); do
+            if ! fuser /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock /var/cache/apt/archives/lock >/dev/null 2>&1; then
+              return 0
+            fi
+            echo "Waiting for APT lock... attempt $i/$max_attempts"
+            sleep 5
+          done
+          echo "Force-clearing locks"
+          rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock /var/cache/apt/archives/lock
+          dpkg --configure -a 2>/dev/null || true
+        }
+
+        # Clean old repo to prevent conflicts
+        rm -f /etc/apt/sources.list.d/kubernetes.list
+        mkdir -p /etc/apt/keyrings
+        
+        # Add dynamic repo key
+        curl -fsSL https://pkgs.k8s.io/core:/stable:/{{ k8s_repo_version }}/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg --yes
+        
+        # Add dynamic repo list
+        echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/{{ k8s_repo_version }}/deb/ /" > /etc/apt/sources.list.d/kubernetes.list
+        
+        # Wait for locks then update
+        wait_for_apt
+        apt-get update
+
+        # Wait for locks then install
+        wait_for_apt
+        apt-get install -y --allow-downgrades --allow-change-held-packages kubelet={{ k8s_pkg_version }} kubeadm={{ k8s_pkg_version }} kubectl={{ k8s_pkg_version }}
+        apt-mark hold kubelet kubeadm kubectl
+      register: k8s_install_result
+      retries: 3
+      delay: 15
+      until: k8s_install_result.rc == 0
+
+    - name: Upload Local Agent Binary
+      copy:
+        src: "{{ agent_binary }}"
+        dest: /usr/local/bin/byoh-hostagent
+        mode: '0755'
+        force: yes
+
+    - name: Copy Fresh Registration Key
+      copy:
+        src: ./bootstrap-kubeconfig.conf
+        dest: /root/bootstrap-kubeconfig.conf
+
+    - name: Set Hostname to Match Input
+      shell: |
+        hostnamectl set-hostname {{ byoh_hostname }}
+      when: byoh_hostname is defined
+
+    - name: Start Agent
+      shell: |
+        pkill byoh-hostagent || true
+        sleep 2
+        nohup /usr/local/bin/byoh-hostagent \
+          --bootstrap-kubeconfig /root/bootstrap-kubeconfig.conf \
+          --namespace default \
+          --skip-installation \
+          --label "host-id={{ byoh_id }}" \
+          > /var/log/byoh.log 2>&1 &
+        echo "BYOH agent started for host {{ byoh_hostname }}"
+      when: byoh_hostname is defined
+
+# ==========================================
+# PLAY 3: Host Registration & Labeling
+# ==========================================
+- name: 3. Finalize Host Registration
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  vars:
+    input: "{{ lookup('file', 'input.json') | from_json }}"
+    kubeconfig: "~/.kube/config"
+
+  tasks:
+    # Quick check - don't wait long, O2IMS controller handles actual verification
+    - name: Brief Wait for Agent Startup
+      pause:
+        seconds: 5
+      
+    - name: Check ByoHost Registration
+      shell: |
+        kubectl --kubeconfig {{ kubeconfig }} get byohosts --no-headers 2>/dev/null | wc -l
+      register: byohost_count
+      ignore_errors: yes
+
+    - name: Show ByoHosts Status
+      debug:
+        msg: "ByoHosts registered: {{ byohost_count.stdout | default('0') }}"
+
+    - name: Remove Restrictive Webhook
+      shell: |
+        kubectl --kubeconfig {{ kubeconfig }} delete validatingwebhookconfiguration byoh-validating-webhook-configuration --ignore-not-found=true
+
+    - name: Pin Hosts (Label ByoHosts with IDs)
+      shell: |
+        kubectl --kubeconfig {{ kubeconfig }} label byohost {{ item.host_name }} host-id={{ item.host_id }} --overwrite 2>/dev/null || true
+      loop: "{{ input.hosts }}"
+      ignore_errors: yes
+
+
+    - name: Display Registered Hosts
+      shell: |
+        kubectl --kubeconfig {{ kubeconfig }} get byohosts --show-labels
+      register: hosts_output
+
+    - name: Host Registration Summary
+      debug:
+        msg: |
+          ==========================================
+          HOST REGISTRATION COMPLETE
+          ==========================================
+          {{ hosts_output.stdout }}
+          
+          Next Steps:
+          1. Create all clusters from input.json:
+             kubectl apply -f examples/focom-all-clusters.yaml
+          
+          2. Monitor cluster creation:
+             kubectl get focomprovisioningrequests -w
+             kubectl get provisioningrequests -w
+             kubectl get clusters -w
+          ==========================================

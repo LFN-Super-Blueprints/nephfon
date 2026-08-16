@@ -1,0 +1,28 @@
+# O2IMS Provisioning Request (Direct)
+# Bypass FOCOM - directly create cluster via O2IMS
+apiVersion: o2ims.provisioning.oran.org/v1alpha1
+kind: ProvisioningRequest
+metadata:
+  name: direct-cluster-request
+  namespace: default
+spec:
+  name: "directCluster"
+  description: "Cluster created directly via O2IMS"
+  templateName: "byoh-workload-cluster"
+  templateVersion: "v1.0.0"
+  templateParameters:
+    clusterName: directCluster
+    k8sVersion: "v1.32.0"
+    clusterProvisioner: byoh
+    clusterType: "core"
+    podCidr: "10.245.0.0/16"
+    serviceCidr: "10.97.0.0/12"
+    hosts:
+      masters:
+        - hostId: 1
+          hostName: byoh-1
+          hostIp: "10.204.86.147"
+      workers:
+        - hostId: 2
+          hostName: byoh-2
+          hostIp: "10.204.86.148"

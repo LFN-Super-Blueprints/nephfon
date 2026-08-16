@@ -1,0 +1,58 @@
+# Replaces the "master" field in each NAD's spec.config with the
+# correct physical NIC from interface-setters.yaml ConfigMap.
+# Uses annotation-based matching for robustness (NAD names are dynamic).
+apiVersion: fn.kpt.dev/v1alpha1
+kind: ApplyReplacements
+metadata:
+  name: replace-nad-master-interfaces
+  annotations:
+    config.kubernetes.io/local-config: "true"
+replacements:
+
+  # ── CUCP: E1 interface ─────────────────────────────────────────────
+  - source:
+      kind: ConfigMap
+      name: interface-setters
+      fieldPath: data.e1-interface
+    targets:
+      - select:
+          kind: NetworkAttachmentDefinition
+          annotations:
+            specializer.nephio.org/owner: req.nephio.org/v1alpha1.Interface.e1
+        fieldPaths:
+          - spec.config
+        options:
+          delimiter: '"master":"'
+          index: 1
+
+  # ── CUCP: F1-C interface ───────────────────────────────────────────
+  - source:
+      kind: ConfigMap
+      name: interface-setters
+      fieldPath: data.f1c-interface
+    targets:
+      - select:
+          kind: NetworkAttachmentDefinition
+          annotations:
+            specializer.nephio.org/owner: req.nephio.org/v1alpha1.Interface.f1c
+        fieldPaths:
+          - spec.config
+        options:
+          delimiter: '"master":"'
+          index: 1
+
+  # ── CUCP: N2 interface ─────────────────────────────────────────────
+  - source:
+      kind: ConfigMap
+      name: interface-setters
+      fieldPath: data.n2-interface
+    targets:
+      - select:
+          kind: NetworkAttachmentDefinition
+          annotations:
+            specializer.nephio.org/owner: req.nephio.org/v1alpha1.Interface.n2
+        fieldPaths:
+          - spec.config
+        options:
+          delimiter: '"master":"'
+          index: 1

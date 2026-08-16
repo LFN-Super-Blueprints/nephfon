@@ -1,0 +1,14 @@
+# Interface for F1 (DU to CU)
+apiVersion: req.nephio.org/v1alpha1
+kind: Interface
+metadata:
+  name: f1
+  annotations:
+    nephio.org/network-name: f1
+    config.kubernetes.io/local-config: "true"
+    specializer.nephio.org/owner: workload.nephio.org/v1alpha1.NFDeployment.du
+    specializer.nephio.org/namespace: oai-ran
+spec:
+  networkInstance:
+    name: vpc-cudu-f1
+  cniType: macvlan

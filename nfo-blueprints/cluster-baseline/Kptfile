@@ -1,0 +1,30 @@
+apiVersion: kpt.dev/v1
+kind: Kptfile
+metadata:
+  name: cluster-baseline
+  annotations:
+    config.kubernetes.io/local-config: "true"
+info:
+  description: |
+    Complete baseline configuration for Nephio workload clusters including:
+    - Namespaces with proper labels
+    - Pod Security Standards
+    - Storage classes
+  keywords:
+    - nephio
+    - baseline
+    - security
+  site: https://nephio.org
+
+pipeline:
+  mutators:
+    - image: ghcr.io/kptdev/krm-functions-catalog/apply-setters:v0.2
+      configMap:
+        cluster-name: my-ran
+        cluster-type: workload
+        workload-type: ran
+        site-id: site-ran-01
+        cluster-repo-url: https://github.com/YOUR-ORG/nephio-my-ran.git
+        cluster-repo-branch: main
+        namespace-prefix: ""
+        storage-class-name: local-path

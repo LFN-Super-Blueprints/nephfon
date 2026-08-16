@@ -1,0 +1,67 @@
+# IPPrefixes for SD-Core cluster
+---
+apiVersion: ipam.resource.nephio.org/v1alpha1
+kind: IPPrefix
+metadata:
+  name: vpc-internal-n4-core
+  labels:
+    nephio.org/address-family: ipv4
+    nephio.org/cluster-name: core
+    nephio.org/network-name: n4
+spec:
+  prefix: 172.1.1.0/24
+  networkInstance:
+    name: vpc-internal
+---
+apiVersion: ipam.resource.nephio.org/v1alpha1
+kind: IPPrefix
+metadata:
+  name: vpc-internet-n6-core
+  labels:
+    nephio.org/address-family: ipv4
+    nephio.org/cluster-name: core
+    nephio.org/network-name: n6
+spec:
+  prefix: 172.0.0.0/24
+  networkInstance:
+    name: vpc-internet
+---
+apiVersion: ipam.resource.nephio.org/v1alpha1
+kind: IPPrefix
+metadata:
+  name: vpc-ran-n2-core
+  labels:
+    nephio.org/address-family: ipv4
+    nephio.org/cluster-name: core
+    nephio.org/network-name: n2
+spec:
+  prefix: 172.2.1.0/24
+  networkInstance:
+    name: vpc-ran
+---
+apiVersion: ipam.resource.nephio.org/v1alpha1
+kind: IPPrefix
+metadata:
+  name: vpc-ran-n3-core
+  labels:
+    nephio.org/address-family: ipv4
+    nephio.org/cluster-name: core
+    nephio.org/network-name: n3
+spec:
+  prefix: 172.3.1.0/24
+  networkInstance:
+    name: vpc-ran
+---
+# DNN Pool for UPF (UE address pool)
+apiVersion: ipam.resource.nephio.org/v1alpha1
+kind: IPPrefix
+metadata:
+  name: vpc-internet-pool-core
+  labels:
+    nephio.org/address-family: ipv4
+    nephio.org/cluster-name: core
+    nephio.org/prefix-kind: pool
+spec:
+  prefix: 10.1.0.0/16
+  networkInstance:
+    name: vpc-internet

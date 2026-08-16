@@ -1,0 +1,24 @@
+# Replaces the "master" field in DU NAD's spec.config
+apiVersion: fn.kpt.dev/v1alpha1
+kind: ApplyReplacements
+metadata:
+  name: replace-nad-master-interfaces
+  annotations:
+    config.kubernetes.io/local-config: "true"
+replacements:
+
+  # ── DU: F1 interface ───────────────────────────────────────────────
+  - source:
+      kind: ConfigMap
+      name: interface-setters
+      fieldPath: data.f1-interface
+    targets:
+      - select:
+          kind: NetworkAttachmentDefinition
+          annotations:
+            specializer.nephio.org/owner: req.nephio.org/v1alpha1.Interface.f1
+        fieldPaths:
+          - spec.config
+        options:
+          delimiter: '"master":"'
+          index: 1

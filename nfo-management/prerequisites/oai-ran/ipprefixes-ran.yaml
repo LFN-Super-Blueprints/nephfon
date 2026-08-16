@@ -1,0 +1,68 @@
+# IPPrefixes for OAI RAN deployment
+# These allocate IP subnets per cluster for each network
+# Apply on the management cluster AFTER networks.yaml
+# Prefixes match upstream OAI packages exactly
+---
+apiVersion: ipam.resource.nephio.org/v1alpha1
+kind: IPPrefix
+metadata:
+  name: vpc-ran-n2-ran
+  labels:
+    nephio.org/address-family: ipv4
+    nephio.org/cluster-name: ran
+    nephio.org/network-name: n2
+spec:
+  prefix: 172.2.0.0/24
+  networkInstance:
+    name: vpc-ran
+---
+apiVersion: ipam.resource.nephio.org/v1alpha1
+kind: IPPrefix
+metadata:
+  name: vpc-ran-n3-ran
+  labels:
+    nephio.org/address-family: ipv4
+    nephio.org/cluster-name: ran
+    nephio.org/network-name: n3
+spec:
+  prefix: 172.3.0.0/24
+  networkInstance:
+    name: vpc-ran
+---
+apiVersion: ipam.resource.nephio.org/v1alpha1
+kind: IPPrefix
+metadata:
+  name: vpc-cu-e1-ran
+  labels:
+    nephio.org/address-family: ipv4
+    nephio.org/cluster-name: ran
+    nephio.org/network-name: e1
+spec:
+  prefix: 172.4.0.0/24
+  networkInstance:
+    name: vpc-cu-e1
+---
+apiVersion: ipam.resource.nephio.org/v1alpha1
+kind: IPPrefix
+metadata:
+  name: vpc-cudu-f1-ran
+  labels:
+    nephio.org/address-family: ipv4
+    nephio.org/cluster-name: ran
+    nephio.org/network-name: f1
+spec:
+  prefix: 172.5.0.0/24
+  networkInstance:
+    name: vpc-cudu-f1
+---
+apiVersion: ipam.resource.nephio.org/v1alpha1
+kind: IPPrefix
+metadata:
+  name: vpc-internal-ran
+  labels:
+    nephio.org/address-family: ipv4
+    nephio.org/cluster-name: ran
+spec:
+  prefix: 172.1.0.0/24
+  networkInstance:
+    name: vpc-internal

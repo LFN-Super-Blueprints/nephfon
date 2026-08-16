@@ -1,0 +1,35 @@
+# vlan-agent PackageVariant for Core cluster
+#
+# Automates the manual VLAN sub-interface creation step from the Nephio docs
+# (test-infra/e2e/provision/hacks/vlan-interfaces.sh). The docs script runs:
+#   ip link add link eth1 name eth1.<id> type vlan id <id>
+# on each worker for VLAN IDs 2-6.
+#
+# This DaemonSet does the same on every node, plus continuously reconciles
+# VLAN sub-interfaces discovered from NetworkAttachmentDefinitions rendered
+# by the Nephio specialization pipeline (nad-fn: master: <masterInterface>.<vlanID>).
+#
+# Deploy together with multus-cni, BEFORE any NF workloads.
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: PackageVariant
+metadata:
+  name: vlan-agent-core
+spec:
+  upstream:
+    repo: nephio-workload-blueprints
+    package: networking/vlan-agent
+  downstream:
+    repo: core
+    package: vlan-agent
+  annotations:
+    approval.nephio.org/policy: always
+  pipeline:
+    mutators:
+      - image: ghcr.io/kptdev/krm-functions-catalog/apply-setters:v0.2
+        configMap:
+          cluster-name: core
+          # Must match WorkloadCluster.spec.masterInterface for the core cluster.
+          master-interface: ens3
+          # Nephio docs parity: pre-create VLANs 2-6 on the master interface.
+          vlan-range: "2 3 4 5 6"
+          reconcile-interval: "30"

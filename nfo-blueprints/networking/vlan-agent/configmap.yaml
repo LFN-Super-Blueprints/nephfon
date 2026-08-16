@@ -1,0 +1,131 @@
+# Configuration + reconcile script for the vlan-agent.
+#
+# The script runs on every node (DaemonSet) and keeps the node's VLAN
+# sub-interfaces in sync with what the NetworkAttachmentDefinitions in
+# the cluster expect:
+#
+#   NAD spec.config ... "master": "ens4f0.6"
+#     -> ip link add link ens4f0 name ens4f0.6 type vlan id 6
+#
+# This automates the manual step from the Nephio docs
+# (test-infra/e2e/provision/hacks/vlan-interfaces.sh).
+#
+# STATIC_MASTER_IF / STATIC_VLAN_RANGE optionally pre-create a fixed
+# range exactly like the docs script does (e.g. eth1 + "2 3 4 5 6").
+# Leave them empty to rely purely on dynamic NAD discovery.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vlan-agent-config
+  namespace: kube-system
+  labels:
+    app: vlan-agent
+    nephio.org/cluster-name: example # kpt-set: ${cluster-name}
+data:
+  master-interface: ens3 # kpt-set: ${master-interface}
+  vlan-range: "2 3 4 5 6" # kpt-set: ${vlan-range}
+  reconcile-interval: "30" # kpt-set: ${reconcile-interval}
+  vlan-agent.sh: |
+    #!/bin/sh
+    # vlan-agent: keep node VLAN sub-interfaces in sync with the
+    # NetworkAttachmentDefinitions in this cluster.
+    set -u
+
+    APISERVER="https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}"
+    SA_DIR="/var/run/secrets/kubernetes.io/serviceaccount"
+    TOKEN_FILE="${SA_DIR}/token"
+    CACERT="${SA_DIR}/ca.crt"
+
+    INTERVAL="${RECONCILE_INTERVAL:-30}"
+
+    log() {
+      echo "$(date '+%Y-%m-%dT%H:%M:%S') $*"
+    }
+
+    # Create one VLAN sub-interface (idempotent).
+    # $1 = parent NIC, $2 = VLAN ID
+    ensure_vlan() {
+      parent="$1"
+      vid="$2"
+      vlan_if="${parent}.${vid}"
+
+      if ! ip link show "$parent" >/dev/null 2>&1; then
+        log "WARN: parent interface $parent not found on this node, skipping $vlan_if"
+        return 0
+      fi
+
+      ip link set "$parent" up 2>/dev/null || true
+
+      if ip link show "$vlan_if" >/dev/null 2>&1; then
+        ip link set "$vlan_if" up 2>/dev/null || true
+        return 0
+      fi
+
+      if ip link add link "$parent" name "$vlan_if" type vlan id "$vid" 2>/dev/null; then
+        ip link set "$vlan_if" up 2>/dev/null || true
+        log "created VLAN sub-interface $vlan_if (parent=$parent id=$vid)"
+      else
+        # Lost a race with another reconcile or creation genuinely failed
+        if ip link show "$vlan_if" >/dev/null 2>&1; then
+          ip link set "$vlan_if" up 2>/dev/null || true
+        else
+          log "ERROR: failed to create $vlan_if"
+        fi
+      fi
+    }
+
+    # Pre-create a static range, exactly like the Nephio docs script
+    # (vlan-interfaces.sh: eth1.2 .. eth1.6). Disabled when unset.
+    reconcile_static() {
+      [ -n "${STATIC_MASTER_IF:-}" ] || return 0
+      [ -n "${STATIC_VLAN_RANGE:-}" ] || return 0
+      for vid in $STATIC_VLAN_RANGE; do
+        ensure_vlan "$STATIC_MASTER_IF" "$vid"
+      done
+    }
+
+    # Discover masters like "<nic>.<vlanID>" from all NADs in the
+    # cluster and make sure the sub-interfaces exist on this node.
+    reconcile_from_nads() {
+      TOKEN="$(cat "$TOKEN_FILE")"
+      nads="$(curl -sS --max-time 15 --cacert "$CACERT" \
+        -H "Authorization: Bearer $TOKEN" \
+        "$APISERVER/apis/k8s.cni.cncf.io/v1/network-attachment-definitions" 2>/dev/null)" || {
+        log "WARN: could not reach API server, will retry"
+        return 0
+      }
+
+      # spec.config is a JSON string; collect "master" from both flat
+      # configs and plugin-list configs.
+      masters="$(printf '%s' "$nads" | jq -r '
+        .items[]?.spec.config
+        | fromjson?
+        | [.master?, (.plugins[]?.master?)]
+        | .[]
+        | select(. != null and . != "")' 2>/dev/null | sort -u)"
+
+      [ -n "$masters" ] || return 0
+
+      for m in $masters; do
+        # Only masters of the form <nic>.<digits> are VLAN sub-interfaces.
+        case "$m" in
+          *.*)
+            vid="${m##*.}"
+            parent="${m%.*}"
+            case "$vid" in
+              ''|*[!0-9]*) continue ;;
+            esac
+            ensure_vlan "$parent" "$vid"
+            ;;
+        esac
+      done
+    }
+
+    log "vlan-agent starting on node ${NODE_NAME:-unknown} (interval=${INTERVAL}s)"
+    modprobe 8021q 2>/dev/null || log "WARN: could not modprobe 8021q (may already be built in)"
+
+    while true; do
+      reconcile_static
+      reconcile_from_nads
+      sleep "$INTERVAL"
+    done

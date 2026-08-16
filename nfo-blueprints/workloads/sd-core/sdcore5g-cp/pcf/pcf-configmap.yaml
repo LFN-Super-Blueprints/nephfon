@@ -1,0 +1,124 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pcf
+  labels:
+    app.kubernetes.io/version: "v3.1.1"
+    project: sdcore5g
+    nf: pcf
+data:
+  pcf-run.sh: |
+    #!/bin/sh
+    
+    # Copyright 2020-present Open Networking Foundation
+    #
+    # SPDX-License-Identifier: Apache-2.0
+    
+    set -xe
+    
+    cd /free5gc
+    
+    cat config/pcfcfg.conf
+    
+    GOTRACEBACK=crash ./pcf/pcf -pcfcfg config/pcfcfg.conf
+    
+  pcfcfg.conf: |-
+    configuration:
+      defaultBdtRefId: BdtPolicyId-
+      mongodb:
+        name: free5gc
+        url: mongodb://mongodb-arbiter-headless
+      nrfUri: http://nrf:29510
+      pcfName: PCF
+      plmnList:
+      - plmnId:
+          mcc: "208"
+          mnc: "93"
+      - plmnId:
+          mcc: "333"
+          mnc: "88"
+      sbi:
+        bindingIPv4: 0.0.0.0
+        port: 29507
+        registerIPv4: pcf
+        scheme: http
+      serviceList:
+      - serviceName: npcf-am-policy-control
+      - serviceName: npcf-smpolicycontrol
+        suppFeat: 3fff
+      - serviceName: npcf-bdtpolicycontrol
+      - serviceName: npcf-policyauthorization
+        suppFeat: 3
+      - serviceName: npcf-eventexposure
+      - serviceName: npcf-ue-policy-control
+    info:
+      description: PCF initial local configuration
+      version: 1.0.0
+    logger:
+      AMF:
+        ReportCaller: false
+        debugLevel: info
+      AUSF:
+        ReportCaller: false
+        debugLevel: info
+      Aper:
+        ReportCaller: false
+        debugLevel: info
+      CommonConsumerTest:
+        ReportCaller: false
+        debugLevel: info
+      FSM:
+        ReportCaller: false
+        debugLevel: info
+      MongoDBLibrary:
+        ReportCaller: false
+        debugLevel: info
+      N3IWF:
+        ReportCaller: false
+        debugLevel: info
+      NAS:
+        ReportCaller: false
+        debugLevel: info
+      NGAP:
+        ReportCaller: false
+        debugLevel: info
+      NRF:
+        ReportCaller: false
+        debugLevel: info
+      NamfComm:
+        ReportCaller: false
+        debugLevel: info
+      NamfEventExposure:
+        ReportCaller: false
+        debugLevel: info
+      NsmfPDUSession:
+        ReportCaller: false
+        debugLevel: info
+      NudrDataRepository:
+        ReportCaller: false
+        debugLevel: info
+      OpenApi:
+        ReportCaller: false
+        debugLevel: info
+      PCF:
+        ReportCaller: false
+        debugLevel: info
+      PFCP:
+        ReportCaller: false
+        debugLevel: info
+      PathUtil:
+        ReportCaller: false
+        debugLevel: info
+      SMF:
+        ReportCaller: false
+        debugLevel: info
+      UDM:
+        ReportCaller: false
+        debugLevel: info
+      UDR:
+        ReportCaller: false
+        debugLevel: info
+      WEBUI:
+        ReportCaller: false
+        debugLevel: info

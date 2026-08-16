@@ -1,0 +1,7 @@
+# VLANIndex for VLAN allocation
+# Required by Nephio's VLAN controller during package rendering
+apiVersion: vlan.resource.nephio.org/v1alpha1
+kind: VLANIndex
+metadata:
+  name: core
+spec: {}

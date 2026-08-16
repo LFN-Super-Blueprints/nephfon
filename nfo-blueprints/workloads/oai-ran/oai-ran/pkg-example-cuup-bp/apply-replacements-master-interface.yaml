@@ -1,0 +1,56 @@
+# Replaces the "master" field in each CUUP NAD's spec.config
+apiVersion: fn.kpt.dev/v1alpha1
+kind: ApplyReplacements
+metadata:
+  name: replace-nad-master-interfaces
+  annotations:
+    config.kubernetes.io/local-config: "true"
+replacements:
+
+  # ── CUUP: E1 interface ─────────────────────────────────────────────
+  - source:
+      kind: ConfigMap
+      name: interface-setters
+      fieldPath: data.e1-interface
+    targets:
+      - select:
+          kind: NetworkAttachmentDefinition
+          annotations:
+            specializer.nephio.org/owner: req.nephio.org/v1alpha1.Interface.e1
+        fieldPaths:
+          - spec.config
+        options:
+          delimiter: '"master":"'
+          index: 1
+
+  # ── CUUP: F1-U interface ───────────────────────────────────────────
+  - source:
+      kind: ConfigMap
+      name: interface-setters
+      fieldPath: data.f1u-interface
+    targets:
+      - select:
+          kind: NetworkAttachmentDefinition
+          annotations:
+            specializer.nephio.org/owner: req.nephio.org/v1alpha1.Interface.f1u
+        fieldPaths:
+          - spec.config
+        options:
+          delimiter: '"master":"'
+          index: 1
+
+  # ── CUUP: N3 interface ─────────────────────────────────────────────
+  - source:
+      kind: ConfigMap
+      name: interface-setters
+      fieldPath: data.n3-interface
+    targets:
+      - select:
+          kind: NetworkAttachmentDefinition
+          annotations:
+            specializer.nephio.org/owner: req.nephio.org/v1alpha1.Interface.n3
+        fieldPaths:
+          - spec.config
+        options:
+          delimiter: '"master":"'
+          index: 1

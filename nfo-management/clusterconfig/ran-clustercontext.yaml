@@ -1,0 +1,9 @@
+# ClusterContext for the OAI-RAN workload cluster
+# Links the CAPI Cluster CR to the Nephio workload context
+
+apiVersion: infra.nephio.org/v1alpha1
+kind: ClusterContext
+metadata:
+  name: ran
+spec:
+  siteCode: ran-site

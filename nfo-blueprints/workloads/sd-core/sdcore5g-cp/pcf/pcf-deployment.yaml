@@ -1,0 +1,65 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pcf
+  labels:
+    app.kubernetes.io/version: "v3.1.1"
+    project: sdcore5g
+    nf: pcf
+spec:
+  replicas: 1
+  #serviceName: pcf-headless
+  selector:
+    matchLabels:
+      project: sdcore5g
+      nf: pcf
+  template:
+    metadata:
+      labels:
+        project: sdcore5g
+        nf: pcf
+    spec:
+      serviceAccountName: pcf
+      initContainers:
+      - name: wait-pcf-module
+        image: omecproject/pod-init:1.0.0
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', 'until nslookup pcf; do echo waiting for pcf; sleep 4; done;']
+      containers:
+      - name: pcf
+        image: omecproject/5gc-pcf:rel-1.4.0
+        imagePullPolicy: IfNotPresent
+        stdin: true
+        tty: true
+        command: ["/free5gc/script/pcf-run.sh"]
+        env:
+        - name: GRPC_GO_LOG_VERBOSITY_LEVEL
+          value: "99"
+        - name: GRPC_GO_LOG_SEVERITY_LEVEL
+          value: "info"
+        - name: GRPC_TRACE
+          value: "all"
+        - name: GRPC_VERBOSITY
+          value: "debug"
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: MANAGED_BY_CONFIG_POD 
+          value: "true"
+        volumeMounts:
+        - name: run-script
+          mountPath: /free5gc/script/pcf-run.sh
+          subPath: pcf-run.sh
+        - name: nf-config
+          mountPath: /free5gc/config
+      volumes:
+      - name: run-script
+        configMap:
+          name: pcf
+          defaultMode: 493
+      - name: nf-config
+        configMap:
+          name: pcf
+          defaultMode: 493          

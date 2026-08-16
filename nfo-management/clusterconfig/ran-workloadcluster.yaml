@@ -1,0 +1,15 @@
+# WorkloadCluster CR for the OAI-RAN cluster
+# Defines CNI type and master interface for macvlan/VLAN traffic
+
+apiVersion: infra.nephio.org/v1alpha1
+kind: WorkloadCluster
+metadata:
+  name: ran
+  labels:
+    nephio.org/cluster-type: ran
+    nephio.org/site: ran
+spec:
+  clusterName: ran
+  cnis:
+  - macvlan
+  masterInterface: ens3

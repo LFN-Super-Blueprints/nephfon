@@ -1,0 +1,19 @@
+# Batch Provisioning - Create ALL clusters from input.json
+#
+# This is the simplest way to provision all clusters at once!
+# Just set allClusters: true and the controller will:
+# 1. Read all clusters from input.json
+# 2. Validate each cluster (odd masters, hosts exist, etc.)
+# 3. Create a ProvisioningRequest for each cluster
+#
+apiVersion: focom.nephio.org/v1alpha1
+kind: FocomProvisioningRequest
+metadata:
+  name: provision-all-clusters
+  namespace: default
+spec:
+  # Create ALL clusters from input.json with one request!
+  allClusters: true
+  
+  # Optional: override target namespace
+  # oCloudNamespace: "default"

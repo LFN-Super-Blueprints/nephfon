@@ -1,0 +1,68 @@
+# DaemonSet to install standard CNI plugins (including macvlan) on every node
+# Uses alpine to download official CNI plugin binaries from GitHub releases
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: cni-plugins-installer
+  namespace: kube-system
+  labels:
+    app: cni-plugins-installer
+spec:
+  selector:
+    matchLabels:
+      app: cni-plugins-installer
+  template:
+    metadata:
+      labels:
+        app: cni-plugins-installer
+    spec:
+      hostNetwork: true
+      tolerations:
+      - operator: Exists
+        effect: NoSchedule
+      initContainers:
+      - name: install-cni-plugins
+        image: alpine:3.19
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          CNI_VERSION=v1.4.0
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64)  ARCH="amd64" ;;
+            aarch64) ARCH="arm64" ;;
+          esac
+          # Skip if macvlan already exists
+          if [ -f /host/opt/cni/bin/macvlan ]; then
+            echo "CNI plugins already installed, skipping download"
+            ls -la /host/opt/cni/bin/macvlan
+            exit 0
+          fi
+          echo "Downloading CNI plugins ${CNI_VERSION} for ${ARCH}..."
+          apk add --no-cache curl
+          curl -sSL "https://github.com/containernetworking/plugins/releases/download/${CNI_VERSION}/cni-plugins-linux-${ARCH}-${CNI_VERSION}.tgz" \
+            -o /tmp/cni-plugins.tgz
+          echo "Extracting to /host/opt/cni/bin/..."
+          mkdir -p /host/opt/cni/bin
+          tar -C /host/opt/cni/bin -xzf /tmp/cni-plugins.tgz
+          rm -f /tmp/cni-plugins.tgz
+          echo "Installed plugins:"
+          ls /host/opt/cni/bin/
+          echo "macvlan check:"
+          ls -la /host/opt/cni/bin/macvlan
+          echo "Done!"
+        volumeMounts:
+        - name: cni-bin
+          mountPath: /host/opt/cni/bin
+        securityContext:
+          privileged: true
+      containers:
+      - name: pause
+        image: registry.k8s.io/pause:3.9
+      volumes:
+      - name: cni-bin
+        hostPath:
+          path: /opt/cni/bin
+          type: DirectoryOrCreate

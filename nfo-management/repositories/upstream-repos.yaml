@@ -1,0 +1,18 @@
+# Upstream repository registration
+# Single blueprint repo containing ALL packages:
+#   - cluster-baseline, platform-addons, networking (multus-cni, vlan-agent)
+#   - OAI-RAN (cp-operators, ran-operator, cucp, cuup, du, network)
+#   - SD-Core (cp, operator, upf, amf, smf)
+---
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: Repository
+metadata:
+  name: nephio-workload-blueprints
+spec:
+  type: git
+  content: Package
+  git:
+    # After push to LFN 5G SBP, set repo to that URL. Packages live in /nfo-blueprints.
+    repo: https://github.com/lfn/Nephfon.git
+    branch: main
+    directory: /nfo-blueprints

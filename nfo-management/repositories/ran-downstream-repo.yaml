@@ -1,0 +1,16 @@
+# Downstream repository registrations
+# These are the per-cluster Git repos where rendered packages are synced
+
+# OAI-RAN cluster downstream repo
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: Repository
+metadata:
+  name: ran
+spec:
+  type: git
+  content: Package
+  deployment: true
+  git:
+    repo: https://github.com/YOUR-ORG/nephio-ran.git
+    branch: main
+    directory: /

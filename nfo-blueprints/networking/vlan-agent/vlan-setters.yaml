@@ -1,0 +1,22 @@
+# Setter values for the vlan-agent package.
+#
+# The Kptfile pipeline applies these via apply-setters (configPath), and a
+# PackageVariant overrides them per cluster with its own apply-setters.
+# Keeping the values in this file (instead of inline in the Kptfile) means the
+# PackageVariant values survive: an inline Kptfile configMap would re-apply the
+# blueprint defaults after the PackageVariant setters had already run.
+#
+# master-interface MUST match WorkloadCluster.spec.masterInterface for the
+# target cluster, since that is the NIC nad-fn writes into the NAD master
+# fields as <masterInterface>.<vlanID>.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vlan-setters
+  annotations:
+    config.kubernetes.io/local-config: "true"
+data:
+  cluster-name: "example" # kpt-set: ${cluster-name}
+  master-interface: "ens3" # kpt-set: ${master-interface}
+  vlan-range: "2 3 4 5 6" # kpt-set: ${vlan-range}
+  reconcile-interval: "30" # kpt-set: ${reconcile-interval}

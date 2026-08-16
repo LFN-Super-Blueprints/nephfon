@@ -1,0 +1,10 @@
+apiVersion: kpt.dev/v1
+kind: Kptfile
+
+metadata:
+  name: sdcore5g-operator
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+info:
+  description: sdcore5g operator package

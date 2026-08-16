@@ -1,0 +1,64 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nssf
+  labels:
+    project: sdcore5g
+    nf: nssf
+spec:
+  replicas: 1
+  #serviceName: nssf-headless
+  selector:
+    matchLabels:
+      project: sdcore5g
+      nf: nssf
+  template:
+    metadata:
+      labels:
+        project: sdcore5g
+        nf: nssf
+    spec:
+      serviceAccountName: nssf
+      initContainers:
+      - name: wait-nssf-module
+        image: omecproject/pod-init:1.0.0
+        imagePullPolicy: IfNotPresent
+        command: ['sh', '-c', 'until nslookup nssf; do echo waiting for nssf; sleep 4; done;']
+      containers:
+      - name: nssf
+        image: omecproject/5gc-nssf:rel-1.4.0
+        imagePullPolicy: IfNotPresent
+        stdin: true
+        tty: true
+        command: ["/free5gc/script/nssf-run.sh"]
+        env:
+        - name: GRPC_GO_LOG_VERBOSITY_LEVEL
+          value: "99"
+        - name: GRPC_GO_LOG_SEVERITY_LEVEL
+          value: "info"
+        - name: GRPC_TRACE
+          value: "all"
+        - name: GRPC_VERBOSITY
+          value: "debug"
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: MANAGED_BY_CONFIG_POD
+          value: "true"
+        volumeMounts:
+        - name: run-script
+          mountPath: /free5gc/script/nssf-run.sh
+          subPath: nssf-run.sh
+        - name: nf-config
+          mountPath: /free5gc/config
+      volumes:
+      - name: run-script
+        configMap:
+          name: nssf
+          defaultMode: 493
+      - name: nf-config
+        configMap:
+          name: nssf
+          defaultMode: 493

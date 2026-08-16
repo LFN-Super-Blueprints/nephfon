@@ -1,0 +1,11 @@
+# Interface-to-NIC mapping for AMF
+# Values are injected via PackageVariant apply-setters
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: interface-setters
+  annotations:
+    config.kubernetes.io/local-config: "true"
+data:
+  networking-mode: "vlan" # kpt-set: ${networking-mode}
+  n2-interface: "eno49" # kpt-set: ${n2-interface}

@@ -1,0 +1,123 @@
+# SD-Core Control Plane (NRF, UDR, UDM, AUSF, PCF, NSSF, WebUI, MongoDB, Kafka)
+# No secondary interfaces — uses cluster network only
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: PackageVariant
+metadata:
+  name: sdcore5g-cp-core
+spec:
+  upstream:
+    repo: nephio-workload-blueprints
+    package: workloads/sd-core/sdcore5g-cp
+  downstream:
+    repo: core
+    package: sdcore5g-cp
+  annotations:
+    approval.nephio.org/policy: initial
+  injectors:
+  - group: infra.nephio.org
+    version: v1alpha1
+    kind: WorkloadCluster
+    name: core
+---
+# SD-Core Operator
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: PackageVariant
+metadata:
+  name: sdcore5g-operator-core
+spec:
+  upstream:
+    repo: nephio-workload-blueprints
+    package: workloads/sd-core/sdcore5g-operator
+  downstream:
+    repo: core
+    package: sdcore5g-operator
+  annotations:
+    approval.nephio.org/policy: initial
+  injectors:
+  - group: infra.nephio.org
+    version: v1alpha1
+    kind: WorkloadCluster
+    name: core
+---
+# SD-Core UPF (MUST be deployed FIRST before AMF and SMF)
+# Interfaces: N3, N4, N6 — each mapped to a physical NIC
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: PackageVariant
+metadata:
+  name: sdcore5g-upf-core
+spec:
+  upstream:
+    repo: nephio-workload-blueprints
+    package: workloads/sd-core/pkg-example-upf-bp
+  downstream:
+    repo: core
+    package: sdcore5g-upf
+  annotations:
+    approval.nephio.org/policy: initial
+  pipeline:
+    mutators:
+      - image: ghcr.io/kptdev/krm-functions-catalog/apply-setters:v0.2
+        configMap:
+          networking-mode: vlan
+          n3-interface: eno49     # used only in networking-mode: nic
+          n4-interface: eno50     # used only in networking-mode: nic
+          n6-interface: ens1f0     # used only in networking-mode: nic
+  injectors:
+  - group: infra.nephio.org
+    version: v1alpha1
+    kind: WorkloadCluster
+    name: core
+---
+# SD-Core AMF (deploy AFTER UPF is Published)
+# Interfaces: N2 — mapped to a physical NIC
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: PackageVariant
+metadata:
+  name: sdcore5g-amf-core
+spec:
+  upstream:
+    repo: nephio-workload-blueprints
+    package: workloads/sd-core/pkg-example-amf-bp
+  downstream:
+    repo: core
+    package: sdcore5g-amf
+  annotations:
+    approval.nephio.org/policy: initial
+  pipeline:
+    mutators:
+      - image: ghcr.io/kptdev/krm-functions-catalog/apply-setters:v0.2
+        configMap:
+          networking-mode: vlan
+          n2-interface: ens4f1     # used only in networking-mode: nic
+  injectors:
+  - group: infra.nephio.org
+    version: v1alpha1
+    kind: WorkloadCluster
+    name: core
+---
+# SD-Core SMF (deploy AFTER UPF is Published)
+# Interfaces: N4 — mapped to a physical NIC
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: PackageVariant
+metadata:
+  name: sdcore5g-smf-core
+spec:
+  upstream:
+    repo: nephio-workload-blueprints
+    package: workloads/sd-core/pkg-example-smf-bp
+  downstream:
+    repo: core
+    package: sdcore5g-smf
+  annotations:
+    approval.nephio.org/policy: initial
+  pipeline:
+    mutators:
+      - image: ghcr.io/kptdev/krm-functions-catalog/apply-setters:v0.2
+        configMap:
+          networking-mode: vlan
+          n4-interface: ens1f1     # used only in networking-mode: nic
+  injectors:
+  - group: infra.nephio.org
+    version: v1alpha1
+    kind: WorkloadCluster
+    name: core

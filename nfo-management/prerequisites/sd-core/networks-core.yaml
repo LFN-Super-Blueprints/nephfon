@@ -1,0 +1,119 @@
+# All Networks required for SD-Core deployment
+# Self-contained — apply this single file for SD-Core prerequisites
+# Apply on the management cluster BEFORE SD-Core PackageVariants
+# Each IPv4 route MUST have cluster-name label — the IPAM selector requires it
+---
+# vpc-ran: Carries N2 (AMF ↔ gNB) and N3 (UPF ↔ gNB) traffic
+apiVersion: infra.nephio.org/v1alpha1
+kind: Network
+metadata:
+  name: vpc-ran
+spec:
+  topology: nephio
+  routingTables:
+  - name: vpc-ran
+    prefixes:
+    - prefix: 172:2::/32
+      labels:
+        nephio.org/network-name: n2
+    - prefix: 172.2.0.0/16
+      labels:
+        nephio.org/network-name: n2
+        nephio.org/cluster-name: ran
+    - prefix: 172.2.128.0/17
+      labels:
+        nephio.org/network-name: n2
+        nephio.org/cluster-name: core
+    - prefix: 172:3::/32
+      labels:
+        nephio.org/network-name: n3
+    - prefix: 172.3.0.0/16
+      labels:
+        nephio.org/network-name: n3
+        nephio.org/cluster-name: ran
+    - prefix: 172.3.128.0/17
+      labels:
+        nephio.org/network-name: n3
+        nephio.org/cluster-name: core
+    interfaces:
+    - kind: bridgedomain
+      bridgeDomainName: vpc-ran
+  bridgeDomains:
+  - name: vpc-ran
+    interfaces:
+    - kind: interface
+      selector:
+        matchExpressions:
+        - {key: nephio.org/cluster-name, operator: Exists}
+---
+# vpc-internal: Carries N4 (SMF ↔ UPF) traffic
+apiVersion: infra.nephio.org/v1alpha1
+kind: Network
+metadata:
+  name: vpc-internal
+spec:
+  topology: nephio
+  routingTables:
+  - name: vpc-internal
+    prefixes:
+    - prefix: 172:1::/32
+    - prefix: 172.1.0.0/16
+      labels:
+        nephio.org/cluster-name: ran
+    - prefix: 172.1.128.0/17
+      labels:
+        nephio.org/cluster-name: core
+    interfaces:
+    - kind: bridgedomain
+      bridgeDomainName: vpc-internal
+  bridgeDomains:
+  - name: vpc-internal
+    interfaces:
+    - kind: interface
+      selector:
+        matchExpressions:
+        - {key: nephio.org/cluster-name, operator: Exists}
+---
+# vpc-internet: Carries N6 (UPF → internet), N3 (CUUP ↔ UPF), DNN pool
+apiVersion: infra.nephio.org/v1alpha1
+kind: Network
+metadata:
+  name: vpc-internet
+spec:
+  topology: nephio
+  routingTables:
+  - name: vpc-internet
+    prefixes:
+    # N3 prefix (used by OAI-RAN CUUP)
+    - prefix: 172:6::/32
+      labels:
+        nephio.org/network-name: n3
+    - prefix: 172.6.0.0/16
+      labels:
+        nephio.org/network-name: n3
+        nephio.org/cluster-name: ran
+    - prefix: 172.6.128.0/17
+      labels:
+        nephio.org/network-name: n3
+        nephio.org/cluster-name: core
+    # N6 prefix (used by SD-Core UPF for internet exit)
+    - prefix: 172::/32
+      labels:
+        nephio.org/network-name: n6
+    - prefix: 172.0.0.0/16
+      labels:
+        nephio.org/network-name: n6
+    # DNN pool prefix (UE address pool)
+    - prefix: 1000::/32
+      labels:
+        nephio.org/prefix-kind: pool
+    interfaces:
+    - kind: bridgedomain
+      bridgeDomainName: vpc-internet
+  bridgeDomains:
+  - name: vpc-internet
+    interfaces:
+    - kind: interface
+      selector:
+        matchExpressions:
+        - {key: nephio.org/cluster-name, operator: Exists}

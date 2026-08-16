@@ -1,0 +1,58 @@
+# Standard namespaces for network functions
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openairinterface # kpt-set: ${namespace-prefix}openairinterface
+  labels:
+    nephio.org/cluster-name: my-ran # kpt-set: ${cluster-name}
+    nephio.org/workload-type: ran
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: free5gc # kpt-set: ${namespace-prefix}free5gc
+  labels:
+    nephio.org/cluster-name: my-core # kpt-set: ${cluster-name}
+    nephio.org/workload-type: core
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oai-ran-cucp
+  labels:
+    nephio.org/cluster-name: my-ran # kpt-set: ${cluster-name}
+    nephio.org/workload-type: ran
+    nephio.org/nf-type: cucp
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/warn: privileged
+    pod-security.kubernetes.io/audit: privileged
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oai-ran-cuup
+  labels:
+    nephio.org/cluster-name: my-ran # kpt-set: ${cluster-name}
+    nephio.org/workload-type: ran
+    nephio.org/nf-type: cuup
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/warn: privileged
+    pod-security.kubernetes.io/audit: privileged
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oai-ran-du
+  labels:
+    nephio.org/cluster-name: my-ran # kpt-set: ${cluster-name}
+    nephio.org/workload-type: ran
+    nephio.org/nf-type: du
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/warn: privileged
+    pod-security.kubernetes.io/audit: privileged

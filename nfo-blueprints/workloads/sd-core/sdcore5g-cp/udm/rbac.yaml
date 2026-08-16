@@ -1,0 +1,49 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: udm
+  labels:
+    project: sdcore5g
+    nf: udm 
+rules:
+  - apiGroups:
+      - ""
+      - extensions
+      - batch
+      - apps
+    verbs:
+      - get
+      - list
+      - patch
+    resources:
+      - statefulsets
+      - daemonsets
+      - jobs
+      - pods
+      - services
+      - endpoints
+      - configmaps
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: udm
+  labels:
+    project: sdcore5g
+    nf: udm 
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: udm
+subjects:
+  - kind: ServiceAccount
+    name: udm
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: udm
+  labels:
+    project: sdcore5g
+    nf: udm   

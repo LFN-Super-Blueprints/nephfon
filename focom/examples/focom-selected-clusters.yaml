@@ -1,0 +1,18 @@
+# Multi-Cluster Provisioning - Create SPECIFIC clusters from input.json
+#
+# Use clusterNames to specify exactly which clusters to create.
+# This is useful when you don't want to create ALL clusters.
+#
+apiVersion: focom.nephio.org/v1alpha1
+kind: FocomProvisioningRequest
+metadata:
+  name: create-selected-clusters
+  namespace: default
+spec:
+  # Specify which clusters to create (must exist in input.json)
+  clusterNames:
+    - "ran"
+    - "core"
+  
+  # Optional: override target namespace
+  # oCloudNamespace: "default"

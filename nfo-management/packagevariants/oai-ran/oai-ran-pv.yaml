@@ -1,0 +1,167 @@
+# OAI Core - AMF (the one CUCP depends on!)
+# The CUCP's dependency_amf.yaml requires packageName: oai-amf
+# in the downstream repo to resolve the AMF dependency
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: PackageVariant
+metadata:
+  name: oai-amf-ran
+spec:
+  upstream:
+    repo: nephio-workload-blueprints
+    package: workloads/oai-ran/oai-ran/oai-amf
+  downstream:
+    repo: ran
+    package: oai-amf
+  annotations:
+    approval.nephio.org/policy: initial
+  injectors:
+  - group: infra.nephio.org
+    version: v1alpha1
+    kind: WorkloadCluster
+    name: ran
+---
+# OAI CP Operators (CRDs only — NO actual core NFs)
+# Required for NFDeployment CRD used by RAN NFs
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: PackageVariant
+metadata:
+  name: oai-cp-operators-ran
+spec:
+  upstream:
+    repo: nephio-workload-blueprints
+    package: workloads/oai-ran/oai-ran/oai-cp-operators
+  downstream:
+    repo: ran
+    package: oai-cp-operators
+  annotations:
+    approval.nephio.org/policy: initial
+  injectors:
+  - group: infra.nephio.org
+    version: v1alpha1
+    kind: WorkloadCluster
+    name: ran
+---
+# OAI RAN Operator
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: PackageVariant
+metadata:
+  name: oai-ran-operator-ran
+spec:
+  upstream:
+    repo: nephio-workload-blueprints
+    package: workloads/oai-ran/oai-ran/oai-ran-operator
+  downstream:
+    repo: ran
+    package: oai-ran-operator
+  annotations:
+    approval.nephio.org/policy: initial
+  injectors:
+  - group: infra.nephio.org
+    version: v1alpha1
+    kind: WorkloadCluster
+    name: ran
+---
+# OAI RAN Network Blueprint
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: PackageVariant
+metadata:
+  name: oai-ran-network-ran
+spec:
+  upstream:
+    repo: nephio-workload-blueprints
+    package: workloads/oai-ran/oai-ran-network
+  downstream:
+    repo: ran
+    package: oai-ran-network
+  annotations:
+    approval.nephio.org/policy: initial
+  injectors:
+  - group: infra.nephio.org
+    version: v1alpha1
+    kind: WorkloadCluster
+    name: ran
+---
+# OAI CUCP (CU Control Plane)
+# Interfaces: E1, F1-C, N2 — each mapped to a physical NIC
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: PackageVariant
+metadata:
+  name: oai-cucp-ran
+spec:
+  upstream:
+    repo: nephio-workload-blueprints
+    package: workloads/oai-ran/oai-ran/pkg-example-cucp-bp
+  downstream:
+    repo: ran
+    package: oai-ran-cucp
+  annotations:
+    approval.nephio.org/policy: initial
+  pipeline:
+    mutators:
+      - image: ghcr.io/kptdev/krm-functions-catalog/apply-setters:v0.2
+        configMap:
+          networking-mode: vlan
+          e1-interface: eno49     # used only in networking-mode: nic
+          f1c-interface: eno50    # used only in networking-mode: nic
+          n2-interface: ens1f0    # used only in networking-mode: nic
+  injectors:
+  - group: infra.nephio.org
+    version: v1alpha1
+    kind: WorkloadCluster
+    name: ran
+---
+# OAI CUUP (CU User Plane)
+# Interfaces: E1, F1-U, N3 — each mapped to a physical NIC
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: PackageVariant
+metadata:
+  name: oai-cuup-ran
+spec:
+  upstream:
+    repo: nephio-workload-blueprints
+    package: workloads/oai-ran/oai-ran/pkg-example-cuup-bp
+  downstream:
+    repo: ran
+    package: oai-ran-cuup
+  annotations:
+    approval.nephio.org/policy: initial
+  pipeline:
+    mutators:
+      - image: ghcr.io/kptdev/krm-functions-catalog/apply-setters:v0.2
+        configMap:
+          networking-mode: vlan
+          e1-interface: ens1f1     # used only in networking-mode: nic
+          f1u-interface: ens1f0    # used only in networking-mode: nic
+          n3-interface: eno49     # used only in networking-mode: nic
+  injectors:
+  - group: infra.nephio.org
+    version: v1alpha1
+    kind: WorkloadCluster
+    name: ran
+---
+# OAI DU (Distributed Unit)
+# Interfaces: F1 — mapped to a physical NIC
+apiVersion: config.porch.kpt.dev/v1alpha1
+kind: PackageVariant
+metadata:
+  name: oai-du-ran
+spec:
+  upstream:
+    repo: nephio-workload-blueprints
+    package: workloads/oai-ran/oai-ran/pkg-example-du-bp
+  downstream:
+    repo: ran
+    package: oai-ran-du
+  annotations:
+    approval.nephio.org/policy: initial
+  pipeline:
+    mutators:
+      - image: ghcr.io/kptdev/krm-functions-catalog/apply-setters:v0.2
+        configMap:
+          networking-mode: vlan
+          f1-interface: ens4f1     # used only in networking-mode: nic
+  injectors:
+  - group: infra.nephio.org
+    version: v1alpha1
+    kind: WorkloadCluster
+    name: ran

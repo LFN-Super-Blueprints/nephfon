@@ -1,0 +1,19 @@
+# Phase 2 Example: Scale a Cluster
+#
+# This example shows how to scale an existing cluster by:
+# 1. Update input.json with new worker nodes
+# 2. Apply this request to trigger scaling
+#
+apiVersion: focom.nephio.org/v1alpha1
+kind: FocomProvisioningRequest
+metadata:
+  name: scale-ran-cluster
+spec:
+  # Phase 2: Scale operation
+  operation: scale
+  
+  # Which cluster to scale
+  clusterName: "ran"
+  
+  # Target worker count (optional - can also be from input.json)
+  targetWorkerCount: 2
