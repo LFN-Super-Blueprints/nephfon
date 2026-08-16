@@ -4,7 +4,7 @@ Draft for the LFN 5G SBP wiki. GitHub: [LFN-Super-Blueprints/nephfon](https://gi
 
 ## Blueprint Owner
 
-**Sridhar K. N. Rao**, srao@linuxfoundation.org, LF-ID: **sridharkn**. Main contributor: **Rehan Fazal**.
+**Sridhar K. N. Rao**, srao@linuxfoundation.org, LF-ID: **sridharkn**. Main contributor: **Rehan Fazal**, mdrehanfazal326@gmail.com, LF-ID: **rehanfazal**.
 
 ## User Stories
 
@@ -35,7 +35,7 @@ Draft for the LFN 5G SBP wiki. GitHub: [LFN-Super-Blueprints/nephfon](https://gi
 | Role | Who | Notes |
 |------|-----|--------|
 | Blueprint owner | Sridhar K. N. Rao, srao@linuxfoundation.org (LF-ID: sridharkn) | SBP submission |
-| Main contributor | Rehan Fazal | Implementation and UNH lab bring-up |
+| Main contributor | Rehan Fazal, mdrehanfazal326@gmail.com (LF-ID: rehanfazal) | Implementation and UNH lab bring-up |
 | Upstream communities | Nephio, OAI, OMEC, CAPI BYOH | Images, CRDs, operators |
 
 Add LFN 5G SBP mentors and lab hosts when assigned.

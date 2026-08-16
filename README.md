@@ -4,7 +4,7 @@
 
 **Owner:** Sridhar K. N. Rao, srao@linuxfoundation.org (LF-ID: **sridharkn**)
 
-**Main contributor:** Rehan Fazal
+**Main contributor:** Rehan Fazal, mdrehanfazal326@gmail.com (LF-ID: **rehanfazal**)
 
 This repository combines FOCOM cluster lifecycle management and NFO network-function deployment:
 

@@ -582,7 +582,7 @@ Reference deployment is running in the **UNH lab**.
 
 ## Contributors
 
-Main contributor: Rehan Fazal. Blueprint owner: Sridhar K. N. Rao, srao@linuxfoundation.org.
+Main contributor: Rehan Fazal, mdrehanfazal326@gmail.com (LF-ID: rehanfazal). Blueprint owner: Sridhar K. N. Rao, srao@linuxfoundation.org (LF-ID: sridharkn).
 
 ---
 
