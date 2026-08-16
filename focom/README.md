@@ -267,8 +267,8 @@ focom/
 
 ```bash
 # Clone the repository
-git clone https://github.com/ios-mcn-smo/byoh-nephio.git
-cd byoh-nephio
+git clone https://github.com/LFN-Super-Blueprints/nephfon.git
+cd nephfon/focom
 
 # Run setup script (~30 mins)
 # Paths are automatically configured!

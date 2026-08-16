@@ -12,7 +12,7 @@ spec:
   type: git
   content: Package
   git:
-    # After push to LFN 5G SBP, set repo to that URL. Packages live in /nfo-blueprints.
-    repo: https://github.com/lfn/Nephfon.git
+    # This Nephfon repo. Override with repositories/configure-repos.sh
+    repo: https://github.com/LFN-Super-Blueprints/nephfon.git
     branch: main
     directory: /nfo-blueprints

@@ -13,7 +13,7 @@ metadata:
 spec:
   sourceFormat: unstructured
   git:
-    repo: https://github.com/YOUR-ORG/nephio-core.git  # ← Change to your downstream repo
+    repo: https://github.com/YOUR-ORG/nephfon-core.git
     branch: main
     dir: /
     auth: none

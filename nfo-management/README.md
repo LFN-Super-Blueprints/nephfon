@@ -279,23 +279,9 @@ For the full `vlan` vs `nic` guide (where to set `networking-mode`, deploy order
 
 ### 2. Repositories — Git URLs
 
-Edit the repo URLs in each file to point to your Git repositories:
+Porch needs **this Nephfon repo as upstream** (`directory: /nfo-blueprints`) and **two separate downstream Git repos** (empty repos Porch writes rendered packages into). They are not the same clone.
 
-```yaml
-# repositories/upstream-repos.yaml
-git:
-  repo: https://github.com/YOUR-ORG/nephio-workload-blueprints.git
-
-# repositories/ran-downstream-repo.yaml
-git:
-  repo: https://github.com/YOUR-ORG/nephio-ran.git
-
-# repositories/core-downstream-repo.yaml
-git:
-  repo: https://github.com/YOUR-ORG/nephio-core.git
-```
-
-> **Note:** Upstream repos use `deployment: false`, downstream repos use `deployment: true`. This controls how Porch treats the repository (blueprint source vs deployment target).
+Copy `repositories/repo-urls.env.example` to `repositories/repo-urls.env`, set the three URLs, and run `repositories/configure-repos.sh`. That updates `repositories/*.yaml` and `clusterconfig/rootsync-*.yaml`. See [`repositories/README.md`](repositories/README.md).
 
 ### Using Private Git Repositories
 
@@ -328,9 +314,9 @@ spec:
   content: Package
   deployment: false
   git:
-    repo: https://github.com/YOUR-ORG/nephio-workload-blueprints.git
+    repo: https://github.com/LFN-Super-Blueprints/nephfon.git
     branch: main
-    directory: /
+    directory: /nfo-blueprints
     secretRef:
       name: git-credentials    # ← references the Secret
 
@@ -584,6 +570,8 @@ Known image fixes already applied in blueprints:
 
 ## Tested On
 
+Reference deployment is running in the **UNH lab**.
+
 - **Management cluster:** Ubuntu 22.04, Kubernetes v1.32, Nephio R5
 - **Workload clusters:** Ubuntu 22.04, Kubernetes v1.32, kubeadm, BYOH provider
 - **OAI-RAN:** v2.3.0 (CUCP, CUUP, DU)
@@ -592,11 +580,9 @@ Known image fixes already applied in blueprints:
 
 ---
 
-## Contact & Support
+## Contributors
 
-If you encounter any errors or issues during deployment, feel free to reach out — I'll try my best to help.
-
-📧 **Email:** mdrehanfazal326@gmail.com
+Main contributor: Rehan Fazal. Blueprint owner: Sridhar K. N. Rao, srao@linuxfoundation.org.
 
 ---
 

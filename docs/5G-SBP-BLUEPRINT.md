@@ -1,10 +1,10 @@
 # LFN 5G Super Blueprint — Nephfon field set
 
-Draft for submission as an LFN 5G SBP blueprint. Replace owner contact and GitHub URLs after the repo is created under the 5G SBP org.
+Draft for the LFN 5G SBP wiki. GitHub: [LFN-Super-Blueprints/nephfon](https://github.com/LFN-Super-Blueprints/nephfon).
 
 ## Blueprint Owner
 
-**Sridhar K. N. Rao** <srao@linuxfoundation.org>, LF-ID: **sridharkn**. Student implementer: **Rehan Fazal** (original repos: `RehanFazal77/byoh-nephio`, `nephio-blueprints`, `nephio-management-config`). Student contact in source docs: mdrehanfazal326@gmail.com.
+**Sridhar K. N. Rao**, srao@linuxfoundation.org, LF-ID: **sridharkn**. Main contributor: **Rehan Fazal**.
 
 ## User Stories
 
@@ -34,9 +34,8 @@ Draft for submission as an LFN 5G SBP blueprint. Replace owner contact and GitHu
 
 | Role | Who | Notes |
 |------|-----|--------|
-| Blueprint owner | Sridhar K. N. Rao <srao@linuxfoundation.org> (LF-ID: sridharkn) | SBP submission, LFN org |
-| Primary implementer | Rehan Fazal (student) | Operators, kpt packages, lab bring-up |
-| Review / claim check | Cursor-assisted code review (this consolidation) | Not a substitute for a witnessed lab demo |
+| Blueprint owner | Sridhar K. N. Rao, srao@linuxfoundation.org (LF-ID: sridharkn) | SBP submission |
+| Main contributor | Rehan Fazal | Implementation and UNH lab bring-up |
 | Upstream communities | Nephio, OAI, OMEC, CAPI BYOH | Images, CRDs, operators |
 
 Add LFN 5G SBP mentors and lab hosts when assigned.
@@ -111,38 +110,31 @@ Typical documented stack: Ubuntu 22.04, Kubernetes v1.32, Nephio R5, OAI-RAN v2.
 | Kubernetes 1.32 + kubeadm | Newer K8s may break BYOH bootstrap or pause image pins |
 | Bitnami → `bitnamilegacy` images | Further registry moves will break SD-Core Kafka/Mongo/Zookeeper |
 | OAI RAN v2.3.0 operators | Newer OAI operator CRDs may not match these kpt packages |
-| Aether SD-Core / OMEC images | Version drift vs Nephio R4-era packages still mentioned in some nested READMEs |
-| Personal Docker Hub `rehanfazal47/nad-master-fn:v2.0` | Must be mirrored; not an LFN artifact yet |
-| O-RAN FOCOM/NFO NBI | This code does **not** wait on a future Porch FOCOM NBI; aligning with Nephio FOCOM NBI ([issue 1066](https://github.com/nephio-project/nephio/issues/1066)) is a future dependency if SBP wants spec-faithful FOCOM |
+| Aether SD-Core / OMEC images | Track image tags against the UNH lab versions |
+| `nad-master-fn` image | Currently `docker.io/rehanfazal47/nad-master-fn:v2.0`; optional republish under LFN |
 
 ## High-level timeline
 
 | Phase | Duration (indicative) | Outcome |
 |-------|----------------------|---------|
-| T0 | Done (student) | FOCOM BYOH LCM + NFO OAI/SD-Core packages |
-| T1 | 1–2 weeks | Monorepo on 5G SBP org; URL and image retarget; LICENSE/NOTICE |
-| T2 | 1 lab week | Witnessed FOCOM cluster create + NFO NF Ready (screenshot/video) |
-| T3 | 2–4 weeks | SBP wiki page, architecture slides, build guide from existing markdown |
-| T4 | Ongoing | Optional: Porch-backed FOCOM NBI; LFN-hosted `nad-master-fn`; UE/traffic demo |
+| T0 | Done | FOCOM BYOH LCM + NFO OAI/SD-Core; UNH lab running |
+| T1 | Done | Publish monorepo to LFN-Super-Blueprints/nephfon |
+| T2 | Near term | Public demo video of the UNH lab |
+| T3 | 2–4 weeks | SBP wiki page and slides from existing markdown |
+| T4 | Optional | LFN-hosted `nad-master-fn`; UE/traffic demo |
 
 ## Upstreaming Opportunities
 
 - Contribute `nad-master-fn` (or equivalent) to Nephio/kpt function catalog to fix NAD JSON truncation.
 - Contribute `vlan-agent` as a replacement for Nephio docs’ manual `vlan-interfaces.sh`.
-- Align FOCOM operator with Nephio FOCOM NBI (Git/Porch draft-propose-approve) instead of hostPath `input.json`.
 - Offer BYOH + O2IMS-style ProvisioningRequest samples to Nephio O-RAN integration docs.
 - Push bitnamilegacy / kube-rbac-proxy image fixes into Nephio SD-Core catalog packages.
-- OAI package-variant cleanup so nested READMEs match the management PackageVariants.
 
 ## Blueprint Outputs
 
 **Code / repos**
 
-- This monorepo (target: LFN 5G SBP GitHub org, name `Nephfon`).
-- Prior student repos (provenance):  
-  - https://github.com/RehanFazal77/byoh-nephio  
-  - https://github.com/RehanFazal77/nephio-blueprints  
-  - https://github.com/RehanFazal77/nephio-management-config  
+- This repository: [LFN-Super-Blueprints/nephfon](https://github.com/LFN-Super-Blueprints/nephfon).  
 
 **Documentation (build guide / slideware)**
 
@@ -152,7 +144,7 @@ Typical documented stack: Ubuntu 22.04, Kubernetes v1.32, Nephio R5, OAI-RAN v2.
 
 **Demo / video**
 
-- None in-repo. Record after T2 lab witness. Related background (not this blueprint): Nephio O-RAN docs and LFN Nephio talks.
+- UNH lab is running. A public demo video is a TODO.
 
 **Suggested SBP artifacts to add**
 

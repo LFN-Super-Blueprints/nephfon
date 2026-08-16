@@ -11,6 +11,6 @@ spec:
   content: Package
   deployment: true
   git:
-    repo: https://github.com/YOUR-ORG/nephio-core.git
+    repo: https://github.com/YOUR-ORG/nephfon-core.git
     branch: main
     directory: /

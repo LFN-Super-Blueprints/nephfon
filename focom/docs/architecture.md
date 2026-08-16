@@ -32,7 +32,7 @@ Scale and delete are described in [provisioning.md](provisioning.md) and [operat
 | O2IMS-style operator | Cluster LCM | `ProvisioningRequest` | BYOH CAPI resources |
 | BYOH controller | Bare-metal provisioner | CAPI resources | Kubernetes on hosts |
 
-FOCOM supports `allClusters`, `clusterNames`, and inline `templateParameters`. This implementation uses Kubernetes CRs and a hostPath-mounted `input.json`. It is **not** the Nephio Porch Git-backed FOCOM NBI.
+FOCOM supports `allClusters`, `clusterNames`, and inline `templateParameters`. Operators watch Kubernetes CRs and read cluster/host details from `input.json`, which matches how this lab is operated today. A Git/Porch REST FOCOM NBI has been discussed in Nephio as a proposal; it is not an approved specification and is not required here.
 
 ## CRDs
 
